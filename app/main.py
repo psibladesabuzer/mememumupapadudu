@@ -28,7 +28,7 @@ def main() -> int:
     try:
         apply_theme(app, dark_qss, light_qss, theme_name)
     except Exception as e:
-        QMessageBox.warning(None, "WorkerHotkeys", f"Не удалось применить тему.\n\n{type(e).__name__}: {e}")
+        QMessageBox.warning(None, "WorkerHotkeys", f"Не удалось применить тему'test.\n\n{type(e).__name__}: {e}")
 
     ico = resource_path("assets/appicona.ico")
     png = resource_path("assets/appicona.png")
