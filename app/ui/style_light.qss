@@ -1,0 +1,66 @@
+QWidget {
+    background: #F4F6FB;
+    color: #111827;
+    font-size: 12px;
+}
+
+QTableWidget {
+    background: #FFFFFF;
+    border: 1px solid #D6D9E0;
+    border-radius: 10px;
+}
+
+QHeaderView::section {
+    background: #EEF1F7;
+    color: #111827;
+    border: none;
+    padding: 8px;
+    font-weight: 600;
+}
+
+QPushButton {
+    color: #111827;
+    background-color: rgba(17, 24, 39, 0.06);
+    border: 1px solid rgba(17, 24, 39, 0.10);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+QPushButton:hover {
+    background-color: rgba(17, 24, 39, 0.10);
+}
+
+QPushButton#primary {
+    color: #FFFFFF;
+    background-color: #2563EB;
+    border: 1px solid #2563EB;
+}
+
+QPushButton#primary:hover {
+    background-color: #1D4ED8;
+}
+
+QTabWidget::pane {
+    border: 1px solid rgba(17, 24, 39, 0.12);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    top: -1px;
+}
+
+QTabBar::tab {
+    color: rgba(17, 24, 39, 0.85);
+    background: rgba(17, 24, 39, 0.06);
+    border: 1px solid rgba(17, 24, 39, 0.12);
+    padding: 8px 14px;
+    margin-right: 6px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    font-weight: 600;
+}
+
+QTabBar::tab:selected {
+    color: #111827;
+    background: rgba(37, 99, 235, 0.18);
+    border: 1px solid rgba(37, 99, 235, 0.35);
+}
