@@ -163,7 +163,11 @@ QTabBar::tab {
     color: rgba(234, 241, 255, 0.85);
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.10);
-    padding: 8px 14px;
+
+    padding: 10px 18px;   /* было 8px 14px */
+    min-height: 34px;     /* добавь для гарантии высоты */
+    font-size: 13px;      /* чуть крупнее (у тебя база 12px) */
+
     margin-right: 6px;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
@@ -182,4 +186,65 @@ QTabBar::tab:selected {
 
 QTabBar {
     qproperty-drawBase: 0;
+}
+/* ===== Hotkey Action Buttons ===== */
+
+QPushButton#hk_zaliv {
+    background-color: #2e7d32;
+    border: 1px solid #388e3c;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px 18px;
+    min-height: 46px;
+    color: white;
+}
+
+QPushButton#hk_zaliv:hover {
+    background-color: #388e3c;
+}
+
+QPushButton#hk_sitemap {
+    background-color: #1565c0;
+    border: 1px solid #1e88e5;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px 18px;
+    min-height: 46px;
+    color: white;
+}
+
+QPushButton#hk_sitemap:hover {
+    background-color: #1e88e5;
+}
+
+QPushButton#hk_hide {
+    background-color: #6a1b9a;
+    border: 1px solid #8e24aa;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px 18px;
+    min-height: 46px;
+    color: white;
+}
+
+QPushButton#hk_hide:hover {
+    background-color: #8e24aa;
+}
+
+QPushButton#hk_rollback {
+    background-color: #b71c1c;
+    border: 1px solid #c62828;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px 18px;
+    min-height: 46px;
+    color: white;
+}
+
+QPushButton#hk_rollback:hover {
+    background-color: #c62828;
 }

@@ -4,7 +4,8 @@ import sys
 import shutil
 from pathlib import Path
 from PySide6.QtCore import QTimer
-
+from PySide6.QtWidgets import QPlainTextEdit
+from app.core.dirnum_queue import parse_dirnums_from_lines, save_queue, load_queue, load_index
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -21,6 +22,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
+    QSplitter,
     QSystemTrayIcon,
     QTabWidget,
     QTableWidget,
@@ -28,11 +31,17 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QAction, QDesktopServices, QIcon
+from PySide6.QtGui import QAction, QDesktopServices, QIcon, QIntValidator
 from PySide6.QtCore import QSize, Qt, QUrl
+from PySide6.QtGui import QGuiApplication
 
+from app.core.template_variants import write_variants
+from app.core.paths import generated_templates_dir
+from app.core.paths import scripts_status
 from app.core.templates import ensure_index_template
 from app.core.paths import (
+    dirnum_next_hotkey_path,
+    runtime_ahk_path,
     rename_sitemap_template_path,
     meta_template_path,
     index_template_path,
@@ -50,13 +59,28 @@ from app.ui.hotkeys_dialog import HotkeyDialog
 from app.core.ahk_manager import AHKManager, build_runtime_ahk
 from app.core.theme import load_theme_name, save_theme_name, apply_theme
 from app.core.paths import prez_notag_path, prez_tag_path
+from app.core.paths import prez_notag_path, prez_tag_path, perm_file_path, perm_console_path
+from app.core.screenshot_settings import (
+    load_screenshot_screen_settings,
+    save_screenshot_screen_settings,
+)
 
 
 def resource_path(relative: str) -> Path:
-    if hasattr(sys, "_MEIPASS"):
-        base = Path(sys._MEIPASS)  # type: ignore[attr-defined]
-        return base / relative
-    return Path(__file__).resolve().parents[2] / relative  # project root
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        p = exe_dir / relative
+        if p.exists():
+            return p
+
+        if hasattr(sys, "_MEIPASS"):
+            p2 = Path(sys._MEIPASS) / relative  # type: ignore[attr-defined]
+            return p2
+
+        return p
+
+    # Dev mode
+    return Path(__file__).resolve().parents[2] / relative
 
 
 class MainWindow(QMainWindow):
@@ -91,7 +115,7 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
 
-        icon_size = QSize(18, 18)
+        icon_size = QSize(30, 30)
 
         # =========================================================
         # TAB 1: HOTKEYS
@@ -245,6 +269,16 @@ class MainWindow(QMainWindow):
         row_shk.addWidget(self.edt_shk, 1)
         row_shk.addWidget(self.btn_save_shk)
 
+        row_screen = QHBoxLayout()
+        row_screen.setSpacing(10)
+
+        lbl_screen = QLabel("Экран для скриншотов:")
+        self.cmb_screenshot_screen = QComboBox()
+
+        row_screen.addWidget(lbl_screen)
+        row_screen.addWidget(self.cmb_screenshot_screen, 1)
+        row_screen.addStretch(1)
+
         hint = QLabel(
             "Подсказка: ^ = Ctrl, # = Win, ! = Alt, + = Shift. Пример: ^6, #n, ^+6.\n"
             "После изменения хоткея нажми «Применить», чтобы AHK перезапустился."
@@ -256,6 +290,7 @@ class MainWindow(QMainWindow):
         settings_layout.addLayout(row_profile)
         settings_layout.addLayout(row_theme)
         settings_layout.addLayout(row_shk)
+        settings_layout.addLayout(row_screen)
         settings_layout.addWidget(hint)
         settings_layout.addStretch(1)
 
@@ -288,6 +323,47 @@ class MainWindow(QMainWindow):
         prez_layout.addWidget(lbl_prez)
         prez_layout.addWidget(self.btn_no_tag)
         prez_layout.addWidget(self.btn_has_tag)
+
+        # --- PERM section ---
+        lbl_perm = QLabel("perm")
+        lbl_perm.setStyleSheet("font-size: 14px; font-weight: 700; margin-top: 6px;")
+
+        self.btn_perm_file = QPushButton("FILE_PERMLINK")
+        self.btn_perm_console = QPushButton("CONSOLE_PERMLINK")
+        self.btn_perm_file.setMinimumHeight(34)
+        self.btn_perm_console.setMinimumHeight(34)
+
+        prez_layout.addWidget(lbl_perm)
+        prez_layout.addWidget(self.btn_perm_file)
+        prez_layout.addWidget(self.btn_perm_console)
+
+        # --- DIR_NUM queue (bulk paste from Excel) ---
+        self.dirnum_bulk = QPlainTextEdit()
+        self.dirnum_bulk.setPlaceholderText(
+            "Вставь сюда 1..200 строк из Excel"
+        )
+        self.dirnum_bulk.setFixedHeight(120)
+
+        self.lbl_dirnum_queue_info = QLabel("Очередь DIR_NUM: 0")
+        self.lbl_dirnum_queue_info.setStyleSheet("color: rgba(226,232,240,0.8);")
+
+        self.lbl_dirnum_queue_current = QLabel("Текущий DIR_NUM: —")
+        self.lbl_dirnum_queue_current.setStyleSheet("color: rgba(226,232,240,0.9); font-weight: 700;")
+
+        self.btn_dirnum_queue_apply = QPushButton("Сохранить")
+        self.btn_dirnum_queue_next = QPushButton("Следующий")
+
+        dirnum_btns = QHBoxLayout()
+        dirnum_btns.setSpacing(8)
+        dirnum_btns.addWidget(self.btn_dirnum_queue_apply, 1)
+        dirnum_btns.addWidget(self.btn_dirnum_queue_next, 1)
+
+        prez_layout.addSpacing(8)
+        prez_layout.addWidget(self.dirnum_bulk)
+        prez_layout.addWidget(self.lbl_dirnum_queue_info)
+        prez_layout.addWidget(self.lbl_dirnum_queue_current)
+        prez_layout.addLayout(dirnum_btns)
+
         prez_layout.addStretch(1)
 
         # PreZ state
@@ -296,73 +372,239 @@ class MainWindow(QMainWindow):
         self.btn_has_tag.clicked.connect(lambda: self._prez_copy("has_tag", seconds=4))
         self._update_prez_buttons()
 
+        # Perm state
+        self._perm_selected: str | None = None
+        self.btn_perm_file.clicked.connect(lambda: self._perm_copy("file", seconds=4))
+        self.btn_perm_console.clicked.connect(lambda: self._perm_copy("console", seconds=4))
+        self._update_perm_buttons()
+
+        # DIR_NUM queue
+        self.btn_dirnum_queue_apply.clicked.connect(self._dirnum_queue_save_from_text)
+        self.btn_dirnum_queue_next.clicked.connect(self._dirnum_queue_next)
+
+        # self._dirnum_queue_refresh(apply_to_input=True)
+
         # ---- Right area: scripts picker ----
         self.zalivka_right = QWidget()
         right_layout = QVBoxLayout(self.zalivka_right)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(12)
 
+        # --- top info (left) ---
         self.lbl_pick_path = QLabel("Выбор: —")
         self.lbl_pick_path.setStyleSheet("font-weight: 600;")
 
-        # Step 1: DB / HTML
-        row_step1 = QHBoxLayout()
-        row_step1.setSpacing(10)
+        # --- search (top-right, above DIR_NUM) ---
+        self.lbl_lang_search = QLabel("ПОИСК:")
+        self.lbl_lang_search.setStyleSheet("font-weight: 700;")
 
-        self.btn_pick_db = QPushButton("DB")
-        self.btn_pick_html = QPushButton("HTML")
-        self.btn_pick_db.setMinimumHeight(34)
-        self.btn_pick_html.setMinimumHeight(34)
+        self.edt_lang_search = QLineEdit()
+        self.edt_lang_search.setPlaceholderText("например FR или EN-FR")
+        self.edt_lang_search.setFixedWidth(190)
+        self.edt_lang_search.textChanged.connect(self._on_lang_search_changed)
 
-        row_step1.addWidget(QLabel("1) Тип:"))
-        row_step1.addWidget(self.btn_pick_db)
-        row_step1.addWidget(self.btn_pick_html)
-        row_step1.addStretch(1)
+        self.lbl_lang_search.setVisible(True)
+        self.edt_lang_search.setVisible(True)
 
-        # Step 2: ZALIV / DOZALIV (only for DB)
-        row_step2 = QHBoxLayout()
-        row_step2.setSpacing(10)
+        # --- DIR_NUM ---
+        self.dir_num_label = QLabel("DIR_NUM:")
+        self.dir_num_label.setStyleSheet("font-weight: 700;")
 
-        self.lbl_step2 = QLabel("2) Подтип:")
+        self.dir_num_edit = QLineEdit()
+        self._dirnum_queue_refresh(apply_to_input=True)
+        self.dir_num_edit.setPlaceholderText("например 12")
+        self.dir_num_edit.setFixedWidth(90)
+        self.dir_num_edit.setValidator(QIntValidator(0, 999999, self))
+        self.dir_num_edit.setText("")
+
+        self.dir_num_label.setVisible(False)
+        self.dir_num_edit.setVisible(False)
+
+        # --- Save DIR_NUM button ---
+        self.btn_dirnum_save = QPushButton("Сохранить")
+        self.btn_dirnum_save.setMinimumHeight(30)
+        self.btn_dirnum_save.setVisible(False)
+        self.btn_dirnum_save.clicked.connect(self._regen_templates_with_new_dirnum)
+
+        # ---- HOTKEY: следующий DIR_NUM ----
+        self.lbl_dirnum_next_hotkey = QLabel("Хоткей следующий DIR_NUM:")
+        self.lbl_dirnum_next_hotkey.setStyleSheet("font-size: 12px;")
+
+        self.dirnum_next_hotkey_edit = QLineEdit()
+        self.dirnum_next_hotkey_edit.setPlaceholderText("например: #m или ^!n")
+        self.dirnum_next_hotkey_edit.setFixedWidth(90)
+        self.dirnum_next_hotkey_edit.setText(self._load_dirnum_next_hotkey())
+
+        self.btn_dirnum_next_hotkey_save = QPushButton("Сохранить")
+        self.btn_dirnum_next_hotkey_save.setMinimumHeight(28)
+        self.btn_dirnum_next_hotkey_save.clicked.connect(self._save_dirnum_next_hotkey)
+
+        # ---- right top box: 2 rows (search row + dirnum row) ----
+        right_top_box = QVBoxLayout()
+        right_top_box.setSpacing(6)
+        right_top_box.setContentsMargins(0, 0, 0, 0)
+
+        row_search = QHBoxLayout()
+        row_search.setSpacing(8)
+        row_search.addWidget(self.lbl_lang_search)
+        row_search.addWidget(self.edt_lang_search)
+
+        row_dirnum = QHBoxLayout()
+        row_dirnum.addWidget(self.lbl_dirnum_next_hotkey)
+        row_dirnum.addWidget(self.dirnum_next_hotkey_edit)
+        row_dirnum.addWidget(self.btn_dirnum_next_hotkey_save)
+        row_dirnum.setSpacing(8)
+        row_dirnum.addWidget(self.dir_num_label)
+        row_dirnum.addWidget(self.dir_num_edit)
+        row_dirnum.addWidget(self.btn_dirnum_save)
+
+        right_top_box.addLayout(row_search)
+        right_top_box.addLayout(row_dirnum)
+
+        # ---- row_top: left label + right box ----
+        row_top = QHBoxLayout()
+        row_top.addWidget(self.lbl_pick_path, 1)
+        row_top.addStretch(1)
+        row_top.addLayout(right_top_box)
+
+        # --- Split view: DB | HTML ---
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setHandleWidth(3)
+        self.splitter.setChildrenCollapsible(False)
+
+        # =========================
+        # DB PANEL
+        # =========================
+        self.db_panel = QWidget()
+        db_layout = QVBoxLayout(self.db_panel)
+        db_layout.setContentsMargins(10, 0, 10, 0)
+        db_layout.setSpacing(10)
+        self.btn_mode_db = QPushButton("DB")
+        self.btn_mode_db.setObjectName("tileBtn")
+        self.btn_mode_db.setMinimumHeight(56)
+        self.btn_mode_db.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.btn_mode_db.clicked.connect(self._toggle_db_panel)
+
+        row_db_btns = QHBoxLayout()
+        row_db_btns.setSpacing(10)
+
         self.btn_pick_zaliv = QPushButton("ZALIV")
         self.btn_pick_dozaliv = QPushButton("DOZALIV")
         self.btn_pick_zaliv.setMinimumHeight(34)
         self.btn_pick_dozaliv.setMinimumHeight(34)
 
-        row_step2.addWidget(self.lbl_step2)
-        row_step2.addWidget(self.btn_pick_zaliv)
-        row_step2.addWidget(self.btn_pick_dozaliv)
-        row_step2.addStretch(1)
+        row_db_btns.addWidget(self.btn_pick_zaliv)
+        row_db_btns.addWidget(self.btn_pick_dozaliv)
+        row_db_btns.addStretch(1)
+        db_layout.addLayout(row_db_btns)
 
-        # Step 3: Languages grid
-        self.lbl_step3 = QLabel("3) Язык:")
-        self.lbl_step3.setStyleSheet("font-weight: 600;")
+        self.db_lang_scroll = QScrollArea()
+        self.db_lang_scroll.setWidgetResizable(True)
+        self.db_lang_scroll.setFrameShape(QFrame.NoFrame)
 
-        self.lang_scroll = QScrollArea()
-        self.lang_scroll.setWidgetResizable(True)
-        self.lang_scroll.setFrameShape(QFrame.NoFrame)
+        self.db_lang_container = QWidget()
+        self.db_lang_grid = QGridLayout(self.db_lang_container)
+        self.db_lang_grid.setContentsMargins(0, 0, 0, 0)
+        self.db_lang_grid.setHorizontalSpacing(10)
+        self.db_lang_grid.setVerticalSpacing(10)
 
-        self.lang_container = QWidget()
-        self.lang_grid = QGridLayout(self.lang_container)
-        self.lang_grid.setContentsMargins(0, 0, 0, 0)
-        self.lang_grid.setHorizontalSpacing(10)
-        self.lang_grid.setVerticalSpacing(10)
+        self.db_lang_scroll.setWidget(self.db_lang_container)
+        db_layout.addWidget(self.db_lang_scroll, 1)
 
-        self.lang_scroll.setWidget(self.lang_container)
+        # =========================
+        # HTML PANEL
+        # =========================
+        self.html_panel = QWidget()
+        html_layout = QVBoxLayout(self.html_panel)
+        html_layout.setContentsMargins(10, 0, 10, 0)
+        html_layout.setSpacing(10)
 
-        right_layout.addWidget(self.lbl_pick_path)
-        right_layout.addLayout(row_step1)
-        right_layout.addLayout(row_step2)
-        right_layout.addWidget(self.lbl_step3)
-        right_layout.addWidget(self.lang_scroll, 1)
+        self.btn_mode_html = QPushButton("HTML")
+        self.btn_mode_html.setObjectName("tileBtn")
+        self.btn_mode_html.setMinimumHeight(56)
+        self.btn_mode_html.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.btn_mode_html.clicked.connect(self._toggle_html_panel)
+
+        # HTML has no subtype row; keep a spacer with same height as DB subtype row for visual alignment
+        self.html_subtype_spacer = QWidget()
+        self.html_subtype_spacer.setFixedHeight(34)
+        html_layout.addWidget(self.html_subtype_spacer)
+
+        self.html_lang_scroll = QScrollArea()
+        self.html_lang_scroll.setWidgetResizable(True)
+        self.html_lang_scroll.setFrameShape(QFrame.NoFrame)
+
+        self.html_lang_container = QWidget()
+        self.html_lang_grid = QGridLayout(self.html_lang_container)
+        self.html_lang_grid.setContentsMargins(0, 0, 0, 0)
+        self.html_lang_grid.setHorizontalSpacing(10)
+        self.html_lang_grid.setVerticalSpacing(10)
+
+        self.html_lang_scroll.setWidget(self.html_lang_container)
+        html_layout.addWidget(self.html_lang_scroll, 1)
+
+        self.splitter.addWidget(self.db_panel)
+        self.splitter.addWidget(self.html_panel)
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 1)
+
+        right_layout.addLayout(row_top)
+
+        # --- top aligned buttons (DB / HTML) ---
+        row_modes = QHBoxLayout()
+        row_modes.setSpacing(16)
+        row_modes.addWidget(self.btn_mode_db, 1)
+        row_modes.addWidget(self.btn_mode_html, 1)
+        right_layout.addLayout(row_modes)
+        right_layout.addWidget(self.splitter, 1)
+
+        #        right_layout.addWidget(self.lang_hint_panel)
+
+        # --- HINT PANEL (3 columns) ---
+        self.lang_hint_panel = QWidget()
+        self.lang_hint_layout = QGridLayout(self.lang_hint_panel)
+        self.lang_hint_layout.setContentsMargins(0, 10, 0, 0)
+        self.lang_hint_layout.setHorizontalSpacing(20)
+
+        self.lbl_hint_normal = QLabel()
+        self.lbl_hint_rollback = QLabel()
+        self.lbl_hint_sitemap = QLabel()
+
+        for lbl in (self.lbl_hint_normal, self.lbl_hint_rollback, self.lbl_hint_sitemap):
+            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setStyleSheet("font-size: 14px; font-weight: 700;")
+            lbl.setVisible(False)
+
+        self.lang_hint_layout.addWidget(self.lbl_hint_normal, 0, 0)
+        self.lang_hint_layout.addWidget(self.lbl_hint_rollback, 0, 1)
+        self.lang_hint_layout.addWidget(self.lbl_hint_sitemap, 0, 2)
+
+        right_layout.addWidget(self.lang_hint_panel)
+
+        self._dir_num: str = ""
+        self.dir_num_edit.textChanged.connect(self._on_dir_num_changed)
 
         # picker state
-        self._pick_type: str | None = None       # "DB" | "HTML"
-        self._pick_subtype: str | None = None    # "ZALIV" | "DOZALIV"
-        self._pick_lang: str | None = None       # "EN" ...
+        self._state_db = {"subtype": "ZALIV", "lang": None, "stage": 0}
+        self._state_html = {"lang": None, "stage": 0}
 
-        self.btn_pick_db.clicked.connect(lambda: self._set_pick_type("DB"))
-        self.btn_pick_html.clicked.connect(lambda: self._set_pick_type("HTML"))
+        self._pick_type: str | None = "DB"  # "DB" | "HTML"
+
+        # mode visibility: show lists only after clicking DB/HTML
+        self._mode: str | None = None
+        self.btn_pick_zaliv.setVisible(False)
+        self.btn_pick_dozaliv.setVisible(False)
+        self.db_lang_scroll.setVisible(False)
+        self.html_lang_scroll.setVisible(False)
+
+        self._pick_subtype: str | None = "ZALIV"  # "ZALIV" | "DOZALIV"
+        self._pick_lang: str | None = None  # "EN" ...
+        self._pick_lang_stage: int = 0  # 0=нет, 1=желтый (предвыбор), 2=зелёный (подтвержден)
+
+        self._lang_filter: str = ""
+
         self.btn_pick_zaliv.clicked.connect(lambda: self._set_pick_subtype("ZALIV"))
         self.btn_pick_dozaliv.clicked.connect(lambda: self._set_pick_subtype("DOZALIV"))
 
@@ -401,6 +643,7 @@ class MainWindow(QMainWindow):
 
         self.cmb_theme.currentIndexChanged.connect(self.on_theme_changed)
         self.btn_save_shk.clicked.connect(self.save_screenshot_hotkey)
+        self.cmb_screenshot_screen.currentIndexChanged.connect(self._on_screenshot_screen_changed)
 
         self.table.cellDoubleClicked.connect(lambda *_: self.edit_hotkey())
 
@@ -409,8 +652,24 @@ class MainWindow(QMainWindow):
         # =========================================================
         self.ahk_exe = resource_path("AutoHotkeyUX.exe")
         self.ahk = AHKManager(self.ahk_exe)
-
+        ok, msg, sp = scripts_status()
+        if not ok:
+            QMessageBox.critical(
+                self,
+                "Scripts не найдены",
+                f"{msg}\n\nОжидается папка:\n{sp}\n\n"
+                "Решение:\n"
+                "1) Убедись, что ты распаковал всю папку dist целиком.\n"
+                "2) Внутри папки приложения должна быть папка Scripts со всеми языками.\n"
+            )
         self.render()
+        # init screenshot screen list
+        self._rebuild_screenshot_screens_combo()
+
+        app = QGuiApplication.instance()
+        if app:
+            app.screenAdded.connect(lambda _s: self._rebuild_screenshot_screens_combo())
+            app.screenRemoved.connect(lambda _s: self._rebuild_screenshot_screens_combo())
 
         # =========================================================
         # TRAY
@@ -430,6 +689,9 @@ class MainWindow(QMainWindow):
             raise FileNotFoundError(f"Не найден файл: {p1}")
         if not p2.exists():
             raise FileNotFoundError(f"Не найден файл: {p2}")
+
+    def _on_dir_num_changed(self, text: str) -> None:
+        self._dir_num = text
 
     def _prez_clear_highlight(self) -> None:
         self._prez_selected = None
@@ -485,6 +747,58 @@ class MainWindow(QMainWindow):
             self.btn_has_tag.setStyleSheet("")
 
     # =========================================================
+    # PERM toggle
+    # =========================================================
+    def _perm_clear_highlight(self) -> None:
+        self._perm_selected = None
+        self._update_perm_buttons()
+
+    def _perm_copy(self, mode: str, seconds: int = 4) -> None:
+        try:
+            if mode == "file":
+                p = perm_file_path()
+            elif mode == "console":
+                p = perm_console_path()
+            else:
+                return
+
+            if not p.exists():
+                QMessageBox.warning(self, "perm", f"Не получилось: файл не найден\n\n{p}")
+                return
+
+            text = p.read_text(encoding="utf-8")
+
+            if not text.strip():
+                QMessageBox.warning(self, "perm", f"Не получилось: файл пустой\n\n{p}")
+                return
+
+            QApplication.clipboard().setText(text)
+
+            self._perm_selected = mode
+            self._update_perm_buttons()
+
+            if not hasattr(self, "_perm_flash_timer"):
+                self._perm_flash_timer = QTimer(self)
+                self._perm_flash_timer.setSingleShot(True)
+                self._perm_flash_timer.timeout.connect(self._perm_clear_highlight)
+
+            self._perm_flash_timer.start(max(1, int(seconds)) * 1000)
+
+        except Exception as e:
+            QMessageBox.warning(self, "perm", f"Не получилось:\n\n{type(e).__name__}: {e}")
+
+    def _update_perm_buttons(self) -> None:
+        if getattr(self, "_perm_selected", None) == "file":
+            self.btn_perm_file.setStyleSheet("background-color: #2e7d32; color: white; font-weight: 600;")
+            self.btn_perm_console.setStyleSheet("")
+        elif getattr(self, "_perm_selected", None) == "console":
+            self.btn_perm_console.setStyleSheet("background-color: #2e7d32; color: white; font-weight: 600;")
+            self.btn_perm_file.setStyleSheet("")
+        else:
+            self.btn_perm_file.setStyleSheet("")
+            self.btn_perm_console.setStyleSheet("")
+
+    # =========================================================
     # ZALIVKA tab visibility
     # =========================================================
     def _update_zalivka_tab_visibility(self) -> None:
@@ -515,42 +829,181 @@ class MainWindow(QMainWindow):
         return scripts_dir()
 
     def _set_pick_type(self, v: str) -> None:
+        if self._pick_type == v:
+            self._pick_lang = None
+            self._pick_lang_stage = 0
+            if v == "DB":
+                self._state_db["lang"] = None
+                self._state_db["stage"] = 0
+            else:
+                self._state_html["lang"] = None
+                self._state_html["stage"] = 0
+
+            self._lang_filter = ""
+            if hasattr(self, "edt_lang_search"):
+                self.edt_lang_search.setText("")
+
+            self._refresh_pick_ui()
+            return
+
+        self._save_current_picker_state()
         self._pick_type = v
-        self._pick_subtype = None
-        self._pick_lang = None
+
+        self._lang_filter = ""
+        if hasattr(self, "edt_lang_search"):
+            self.edt_lang_search.setText("")
+
+        self._load_picker_state(v)
         self._refresh_pick_ui()
 
-
     def _set_pick_subtype(self, v: str) -> None:
+        self._pick_type = "DB"
         self._pick_subtype = v
+
         self._pick_lang = None
+        self._pick_lang_stage = 0
+
+        self._lang_filter = ""
+        if hasattr(self, "edt_lang_search"):
+            self.edt_lang_search.setText("")
+
+        self._state_db["subtype"] = v
+        self._state_db["lang"] = self._pick_lang
+        self._state_db["stage"] = self._pick_lang_stage
+
+        self._refresh_pick_ui()
+
+    def _set_pick_lang_db(self, v: str) -> None:
+        # DB selection (independent state)
+        if int(self._state_db.get("stage") or 0) == 2:
+            return
+
+        # ensure active selection context for template generation
+        self._pick_type = "DB"
+        self._pick_subtype = self._state_db.get("subtype") or self._pick_subtype or "ZALIV"
+
+        cur = self._state_db.get("lang")
+        stage = int(self._state_db.get("stage") or 0)
+
+        if cur != v:
+            self._state_db["lang"] = v
+            self._state_db["stage"] = 1
+            self._pick_lang = v
+            self._pick_lang_stage = 1
+            self._refresh_pick_ui()
+            return
+
+        if stage == 1:
+            self._state_db["stage"] = 2
+            self._pick_lang = v
+            self._pick_lang_stage = 2
+
+            # If HTML was confirmed earlier, mark it as "stale" (yellow) until user re-confirms it
+            if int(self._state_html.get("stage") or 0) == 2 and self._state_html.get("lang"):
+                self._state_html["stage"] = 1
+                # repaint only; HTML stays selected but needs a click to become active again
+                if getattr(self, "_html_active", False):
+                    self._rebuild_lang_buttons_html()
+
+            self._generate_lang_templates()
+            self._refresh_pick_ui()
+            return
+
+        self._state_db["stage"] = 1
+        self._pick_lang = v
+        self._pick_lang_stage = 1
+        self._refresh_pick_ui()
+
+    def _set_pick_lang_html(self, v: str) -> None:
+        # HTML selection (independent state)
+        if int(self._state_html.get("stage") or 0) == 2:
+            return
+
+        self._pick_type = "HTML"
+        self._pick_subtype = None
+
+        cur = self._state_html.get("lang")
+        stage = int(self._state_html.get("stage") or 0)
+
+        if cur != v:
+            self._state_html["lang"] = v
+            self._state_html["stage"] = 1
+            self._pick_lang = v
+            self._pick_lang_stage = 1
+            self._refresh_pick_ui()
+            return
+
+        if stage == 1:
+            self._state_html["stage"] = 2
+            self._pick_lang = v
+            self._pick_lang_stage = 2
+
+            # If DB was confirmed earlier, mark it as "stale" (yellow) until user re-confirms it
+            if int(self._state_db.get("stage") or 0) == 2 and self._state_db.get("lang"):
+                self._state_db["stage"] = 1
+                if getattr(self, "_db_active", False):
+                    self._rebuild_lang_buttons_db()
+
+            self._generate_lang_templates()
+            self._refresh_pick_ui()
+            return
+
+        self._state_html["stage"] = 1
+        self._pick_lang = v
+        self._pick_lang_stage = 1
         self._refresh_pick_ui()
 
     def _set_pick_lang(self, v: str) -> None:
-        if self._pick_lang == v:
-            self._pick_lang = None
+        # legacy entrypoint
+        if self._pick_type == "HTML":
+            self._set_pick_lang_html(v)
         else:
-            self._pick_lang = v
-        self._refresh_pick_ui()
+            self._set_pick_lang_db(v)
 
     def _refresh_pick_ui(self) -> None:
-        is_db = (self._pick_type == "DB")
-        self.lbl_step2.setVisible(is_db)
-        self.btn_pick_zaliv.setVisible(is_db)
-        self.btn_pick_dozaliv.setVisible(is_db)
-
+        # Paint DB subtype buttons
         def paint(btn: QPushButton, active: bool) -> None:
             btn.setStyleSheet(
                 "background-color: #2e7d32; color: white; font-weight: 700;" if active else ""
             )
 
-        paint(self.btn_pick_db, self._pick_type == "DB")
-        paint(self.btn_pick_html, self._pick_type == "HTML")
-        paint(self.btn_pick_zaliv, self._pick_subtype == "ZALIV")
-        paint(self.btn_pick_dozaliv, self._pick_subtype == "DOZALIV")
+        paint(self.btn_pick_zaliv, (self._state_db.get("subtype") == "ZALIV"))
+        paint(self.btn_pick_dozaliv, (self._state_db.get("subtype") == "DOZALIV"))
 
+        # Hints are shown only for the last confirmed (global) selection
+        show_hint = (self._pick_lang_stage == 2 and self._pick_lang)
+
+        if show_hint:
+            lang = self._pick_lang
+            self.lbl_hint_normal.setText(f"Обычный {lang}")
+            self.lbl_hint_rollback.setText(f"Rollback {lang}")
+            self.lbl_hint_sitemap.setText(f"Sitemap {lang}")
+
+            self.lbl_hint_normal.setStyleSheet(
+                "color: #2e7d32; background-color: rgba(46,125,50,0.15); "
+                "padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700;"
+            )
+            self.lbl_hint_rollback.setStyleSheet(
+                "color: #c62828; background-color: rgba(198,40,40,0.15); "
+                "padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700;"
+            )
+            self.lbl_hint_sitemap.setStyleSheet(
+                "color: #f9a825; background-color: rgba(249,168,37,0.15); "
+                "padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700;"
+            )
+
+            self.lbl_hint_normal.setVisible(True)
+            self.lbl_hint_rollback.setVisible(True)
+            self.lbl_hint_sitemap.setVisible(True)
+        else:
+            self.lbl_hint_normal.setVisible(False)
+            self.lbl_hint_rollback.setVisible(False)
+            self.lbl_hint_sitemap.setVisible(False)
+
+        # rebuild both panels
         self._rebuild_lang_buttons()
 
+        # top-left breadcrumb (last active click)
         parts: list[str] = []
         if self._pick_type:
             parts.append(self._pick_type)
@@ -558,39 +1011,96 @@ class MainWindow(QMainWindow):
             parts.append(self._pick_subtype)
         if self._pick_lang:
             parts.append(self._pick_lang)
-
         self.lbl_pick_path.setText("Выбор: " + (" → ".join(parts) if parts else "—"))
 
-    def _rebuild_lang_buttons(self) -> None:
-        while self.lang_grid.count():
-            item = self.lang_grid.takeAt(0)
+        show_dir = bool(self._pick_lang) and self._pick_lang_stage in (1, 2)
+        self.dir_num_label.setVisible(show_dir)
+        self.dir_num_edit.setVisible(show_dir)
+        self.btn_dirnum_save.setVisible(show_dir)
+
+    def _toggle_db_panel(self) -> None:
+        # DB и HTML независимы: включаем/выключаем только DB-зону
+        self._db_active = not getattr(self, "_db_active", False)
+        self.btn_pick_zaliv.setVisible(self._db_active)
+        self.btn_pick_dozaliv.setVisible(self._db_active)
+        self.db_lang_scroll.setVisible(self._db_active)
+
+        if self._db_active:
+            self._rebuild_lang_buttons_db()
+
+        self._update_mode_styles()
+
+    def _toggle_html_panel(self) -> None:
+        # DB и HTML независимы: включаем/выключаем только HTML-зону
+        self._html_active = not getattr(self, "_html_active", False)
+        self.html_lang_scroll.setVisible(self._html_active)
+
+        if self._html_active:
+            self._rebuild_lang_buttons_html()
+
+        self._update_mode_styles()
+
+    def _update_mode_styles(self) -> None:
+        # подсветка крупных кнопок (может быть активны обе)
+        def paint(btn: QPushButton, active: bool) -> None:
+            btn.setStyleSheet(
+                "background-color: rgba(52, 120, 246, 0.30); border: 1px solid rgba(52, 120, 246, 0.55);"
+                if active else ""
+            )
+
+        paint(self.btn_mode_db, getattr(self, "_db_active", False))
+        paint(self.btn_mode_html, getattr(self, "_html_active", False))
+
+    def _clear_grid(self, grid: QGridLayout) -> None:
+        while grid.count():
+            item = grid.takeAt(0)
             w = item.widget()
             if w:
                 w.deleteLater()
 
-        if not self._pick_type:
+    def _calc_cols(self, scroll: QScrollArea) -> int:
+        cols = 6
+        try:
+            w = scroll.viewport().width()
+            cols = max(3, min(10, w // 110))
+        except Exception:
+            pass
+        return cols
+
+    def _norm_lang(self, s: str) -> str:
+        return s.strip().upper().replace(" ", "").replace("_", "-")
+
+    def _rebuild_lang_buttons_db(self) -> None:
+        if not hasattr(self, "db_lang_grid"):
             return
 
+        self._clear_grid(self.db_lang_grid)
+
         root = self._scripts_root()
+        subtype = self._state_db.get("subtype")
+        if not subtype:
+            return
 
-        if self._pick_type == "HTML":
-            base = root / "HTML"
-        else:
-            if not self._pick_subtype:
-                return
-            base = root / "DB" / self._pick_subtype
-
+        base = root / "DB" / str(subtype)
         if not base.exists():
             return
 
         langs = sorted([p.name for p in base.iterdir() if p.is_dir()])
 
-        cols = 6
-        try:
-            w = self.lang_scroll.viewport().width()
-            cols = max(3, min(10, w // 110))
-        except Exception:
-            pass
+        flt = self._norm_lang(getattr(self, "_lang_filter", ""))
+        stage = int(self._state_db.get("stage") or 0)
+        selected = self._state_db.get("lang")
+
+        if flt and not (stage == 2 and selected):
+            langs = [x for x in langs if flt in self._norm_lang(x)]
+
+        if stage == 2 and selected:
+            langs = [selected] if selected in langs else []
+
+        cols = self._calc_cols(self.db_lang_scroll)
+
+        YELLOW = "background-color: #f9a825; color: #111827; font-weight: 800;"
+        GREEN = "background-color: #2e7d32; color: white; font-weight: 800;"
 
         r = 0
         c = 0
@@ -598,21 +1108,137 @@ class MainWindow(QMainWindow):
             btn = QPushButton(lang)
             btn.setMinimumHeight(34)
 
-            if self._pick_lang == lang:
-                btn.setStyleSheet("background-color: #2e7d32; color: white; font-weight: 700;")
+            if selected == lang and stage == 1:
+                btn.setStyleSheet(YELLOW)
+            elif selected == lang and stage == 2:
+                btn.setStyleSheet(GREEN)
 
-            btn.clicked.connect(lambda _=False, x=lang: self._set_pick_lang(x))
-            self.lang_grid.addWidget(btn, r, c)
+            btn.clicked.connect(lambda _=False, x=lang: self._set_pick_lang_db(x))
+            self.db_lang_grid.addWidget(btn, r, c)
 
             c += 1
             if c >= cols:
                 c = 0
                 r += 1
 
+    def _rebuild_lang_buttons_html(self) -> None:
+        if not hasattr(self, "html_lang_grid"):
+            return
+
+        self._clear_grid(self.html_lang_grid)
+
+        root = self._scripts_root()
+        base = root / "HTML"
+        if not base.exists():
+            return
+
+        langs = sorted([p.name for p in base.iterdir() if p.is_dir()])
+
+        flt = self._norm_lang(getattr(self, "_lang_filter", ""))
+        stage = int(self._state_html.get("stage") or 0)
+        selected = self._state_html.get("lang")
+
+        if flt and not (stage == 2 and selected):
+            langs = [x for x in langs if flt in self._norm_lang(x)]
+
+        if stage == 2 and selected:
+            langs = [selected] if selected in langs else []
+
+        cols = self._calc_cols(self.html_lang_scroll)
+
+        YELLOW = "background-color: #f9a825; color: #111827; font-weight: 800;"
+        GREEN = "background-color: #2e7d32; color: white; font-weight: 800;"
+
+        r = 0
+        c = 0
+        for lang in langs:
+            btn = QPushButton(lang)
+            btn.setMinimumHeight(34)
+
+            if selected == lang and stage == 1:
+                btn.setStyleSheet(YELLOW)
+            elif selected == lang and stage == 2:
+                btn.setStyleSheet(GREEN)
+
+            btn.clicked.connect(lambda _=False, x=lang: self._set_pick_lang_html(x))
+            self.html_lang_grid.addWidget(btn, r, c)
+
+            c += 1
+            if c >= cols:
+                c = 0
+                r += 1
+
+    def _rebuild_lang_buttons(self) -> None:
+        # Перерисовываем только активные панели
+        if getattr(self, "_db_active", False):
+            self._rebuild_lang_buttons_db()
+        if getattr(self, "_html_active", False):
+            self._rebuild_lang_buttons_html()
+
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        if hasattr(self, "lang_scroll"):
-            self._rebuild_lang_buttons()
+        self._rebuild_lang_buttons()
+
+    # =========================================================
+    # SCREENSHOT SCREEN (monitor select)
+    # =========================================================
+    def _rebuild_screenshot_screens_combo(self) -> None:
+        if not hasattr(self, "cmb_screenshot_screen"):
+            return
+
+        cb = self.cmb_screenshot_screen
+        cb.blockSignals(True)
+        cb.clear()
+
+        screens = QGuiApplication.screens()
+        primary = QGuiApplication.primaryScreen()
+
+        # 0) Авто (Primary)
+        cb.addItem("Авто (Primary)", {"mode": "auto", "index": None})
+
+        # 1..N экраны
+        for i, s in enumerate(screens):
+            geom = s.geometry()
+            is_primary = (primary is not None and s is primary)
+
+            title = f"Экран {i + 1}"
+            if is_primary:
+                title += " (Primary)"
+            title += f" — {geom.width()}×{geom.height()} @ ({geom.x()},{geom.y()})"
+
+            cb.addItem(title, {"mode": "screen", "index": i})
+
+        # выставляем сохранённое значение
+        saved = load_screenshot_screen_settings()
+        want_mode = saved.get("mode", "auto")
+        want_idx = saved.get("index", None)
+
+        set_index = 0  # по умолчанию авто
+        if want_mode == "screen" and want_idx is not None:
+            try:
+                want_idx = int(want_idx)
+            except Exception:
+                want_idx = None
+
+        if want_mode == "screen" and want_idx is not None:
+            for k in range(cb.count()):
+                data = cb.itemData(k)
+                if data and data.get("mode") == "screen" and data.get("index") == want_idx:
+                    set_index = k
+                    break
+
+        cb.setCurrentIndex(set_index)
+        cb.blockSignals(False)
+
+    def _on_screenshot_screen_changed(self) -> None:
+        data = self.cmb_screenshot_screen.currentData()
+        if not data:
+            save_screenshot_screen_settings("auto", None)
+            return
+
+        mode = data.get("mode", "auto")
+        idx = data.get("index", None)
+        save_screenshot_screen_settings(mode, idx)
 
     # =========================================================
     # SCREENSHOT HOTKEY FILE
@@ -626,6 +1252,32 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         return "^6"
+
+    def _load_dirnum_next_hotkey(self) -> str:
+        p = dirnum_next_hotkey_path()
+        try:
+            if p.exists():
+                v = (p.read_text(encoding="utf-8") or "").strip()
+                if v:
+                    return v
+        except Exception:
+            pass
+        return "#m"  # default Win+M
+
+    def _save_dirnum_next_hotkey(self) -> None:
+        hk = (self.dirnum_next_hotkey_edit.text() or "").strip()
+        if not hk:
+            hk = "#m"
+
+        p = dirnum_next_hotkey_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(hk, encoding="utf-8")
+
+        # перезапуск AHK
+        try:
+            self.ahk.restart(runtime_ahk_path())
+        except Exception:
+            pass
 
     def save_screenshot_hotkey(self) -> None:
         try:
@@ -955,6 +1607,25 @@ class MainWindow(QMainWindow):
 
                 reg_lines.append(f'Hotkey("$*{combo}", (*) => {fn_name}(), "On")')
 
+            active = get_active_profile()
+
+            if active == "zalivka":
+                # === dynamic mode flag for AHK ===
+                mode_file = generated_templates_dir().parent / "mode.txt"
+                mode = "html" if self._pick_type == "HTML" else "db"
+                mode_file.write_text(mode, encoding="utf-8")
+                toast_file = generated_templates_dir().parent / "toast_state.txt"
+
+                toast_file.write_text(
+                    f"type={self._pick_type}\n"
+                    f"lang={self._pick_lang}\n"
+                    f"subtype={self._pick_subtype or ''}\n",
+                    encoding="utf-8"
+                )
+
+                # === end flag ===
+                reg_lines.append("RegisterGeneratedHotkeys()")
+
             gen_lines: list[str] = []
             gen_lines.append("; ====== AUTOGENERATED HOTKEYS ======")
             gen_lines.append("; --- functions ---")
@@ -995,3 +1666,207 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Готово", "Хоткеи применены и AHK перезапущен.")
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"{type(e).__name__}: {e}")
+
+    def _selected_php_path(self) -> Path | None:
+        if not self._pick_type or not self._pick_lang:
+            return None
+
+        root = self._scripts_root()
+
+        if self._pick_type == "HTML":
+            base = root / "HTML" / self._pick_lang
+        else:
+            if not self._pick_subtype:
+                return None
+            base = root / "DB" / self._pick_subtype / self._pick_lang
+
+        if not base.exists():
+            return None
+
+        php_files = sorted([p for p in base.iterdir() if p.is_file() and p.suffix.lower() == ".php"])
+        if len(php_files) != 1:
+            return None
+        return php_files[0]
+
+    def _generate_lang_templates(self) -> None:
+        src = self._selected_php_path()
+        if not src:
+            QMessageBox.warning(self, "Шаблон", "В папке языка должен быть ровно 1 .php файл.")
+            return
+        self._last_template_src = src
+        dir_num = (self.dir_num_edit.text() or "").strip()
+        if not dir_num:
+            QMessageBox.warning(self, "DIR_NUM", "Введите DIR_NUM (только цифры).")
+            return
+
+        out_dir = generated_templates_dir()
+        write_variants(src, out_dir, dir_num)
+
+        # HTML uses only HK1..HK2; DB uses HK1..HK4
+        if getattr(self, "_pick_type", None) == "HTML":
+            for n in (3, 4):
+                p = out_dir / f"HK{n}.php"
+                if p.exists():
+                    try:
+                        p.unlink()
+                    except Exception:
+                        pass
+
+    def _regen_templates_with_new_dirnum(self) -> None:
+        try:
+            if self._pick_lang_stage != 2 or not getattr(self, "_last_template_src", None):
+                QMessageBox.information(self, "DIR_NUM", "Сначала выберите и подтвердите язык (зелёным).")
+                return
+
+            src = self._last_template_src
+            if not src.exists():
+                QMessageBox.warning(self, "DIR_NUM", f"Исходный шаблон не найден:\n{src}")
+                return
+
+            dir_num = (self.dir_num_edit.text() or "").strip()
+            if not dir_num:
+                QMessageBox.warning(self, "DIR_NUM", "Введите DIR_NUM (только цифры).")
+                return
+
+            out_dir = generated_templates_dir()
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            # удаляем старые файлы
+            for n in (1, 2, 3, 4):
+                p = out_dir / f"HK{n}.php"
+                if p.exists():
+                    p.unlink()
+
+            write_variants(src, out_dir, dir_num)
+
+            # визуальный фидбек
+            self.btn_dirnum_save.setStyleSheet("background-color: #2e7d32; color: white; font-weight: 700;")
+            if not hasattr(self, "_dirnum_save_timer"):
+                self._dirnum_save_timer = QTimer(self)
+                self._dirnum_save_timer.setSingleShot(True)
+                self._dirnum_save_timer.timeout.connect(
+                    lambda: self.btn_dirnum_save.setStyleSheet("")
+                )
+            self._dirnum_save_timer.start(1200)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"{type(e).__name__}: {e}")
+
+    def _update_dirnum_save_enabled(self) -> None:
+        ok = bool((self.dir_num_edit.text() or "").strip())
+        if hasattr(self, "btn_dirnum_save"):
+            self.btn_dirnum_save.setEnabled(ok)
+
+    # ================= DIR_NUM очередь (bulk из Excel) =================
+    def _dirnum_queue_refresh(self, *, apply_to_input: bool = False) -> None:
+        if not hasattr(self, "dir_num_edit"):
+            return
+        try:
+            queue = load_queue() or []
+            idx = int(load_index() or 0)
+        except Exception:
+            queue = []
+            idx = 0
+
+        total = len(queue)
+        self.lbl_dirnum_queue_info.setText(f"Очередь DIR_NUM: {total}")
+
+        current = None
+        if total and 0 <= idx < total:
+            current = str(queue[idx])
+
+        self.lbl_dirnum_queue_current.setText(f"Текущий DIR_NUM: {current or '—'}")
+        self.btn_dirnum_queue_next.setEnabled(total > 0)
+
+        if apply_to_input and current:
+            # если пользователь уже вручную ввёл DIR_NUM — не затираем
+            if not (self.dir_num_edit.text() or "").strip():
+                self.dir_num_edit.setText(current)
+
+    def _dirnum_queue_save_from_text(self) -> None:
+        """Парсит текст из поля, сохраняет очередь и подставляет первый DIR_NUM."""
+        raw = self.dirnum_bulk.toPlainText() or ""
+        lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+        if not lines:
+            QMessageBox.information(self, "DIR_NUM", "Вставьте строки в поле (1..200) и нажмите 'Сохранить список'.")
+            return
+
+        try:
+            queue = parse_dirnums_from_lines(raw) or []
+        except Exception as e:
+            QMessageBox.critical(self, "DIR_NUM", f"Ошибка разбора строк: {e}")
+            return
+
+        if not queue:
+            QMessageBox.warning(self, "DIR_NUM", "Не удалось извлечь ни одного DIR_NUM из вставленных строк.")
+            return
+
+        # сохраняем очередь (модуль сам хранит в профиле)
+        try:
+            save_queue(queue)
+        except Exception as e:
+            QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить очередь: {e}")
+            return
+
+        # подставляем первый
+        self.dir_num_edit.setText(str(queue[0]))
+        self._dirnum_queue_refresh(apply_to_input=False)
+
+        # пересобираем HK под новый DIR_NUM из очереди (если язык уже подтверждён)
+        try:
+            self._regen_templates_with_new_dirnum()
+        except Exception:
+            pass
+
+    def _dirnum_queue_next(self) -> None:
+        """Переход к следующему DIR_NUM (кнопка). Реализация без отдельного save_index: вращаем список."""
+        try:
+            queue = load_queue() or []
+        except Exception:
+            queue = []
+
+        if not queue:
+            self._dirnum_queue_refresh(apply_to_input=False)
+
+        # пересобираем HK под новый DIR_NUM из очереди (если язык уже подтверждён)
+        try:
+            self._regen_templates_with_new_dirnum()
+        except Exception:
+            pass
+            return
+
+        # Сдвиг на 1 вперёд
+        if len(queue) > 1:
+            queue = queue[1:] + [queue[0]]
+
+        try:
+            save_queue(queue)
+        except Exception as e:
+            QMessageBox.critical(self, "DIR_NUM", f"Не удалось обновить очередь: {e}")
+            return
+
+        self.dir_num_edit.setText(str(queue[0]))
+        self._dirnum_queue_refresh(apply_to_input=False)
+
+    def _on_lang_search_changed(self, text: str) -> None:
+        self._lang_filter = (text or "").strip()
+        self._rebuild_lang_buttons()
+
+    def _save_current_picker_state(self) -> None:
+        if self._pick_type == "DB":
+            self._state_db["subtype"] = self._pick_subtype
+            self._state_db["lang"] = self._pick_lang
+            self._state_db["stage"] = self._pick_lang_stage
+        elif self._pick_type == "HTML":
+            self._state_html["lang"] = self._pick_lang
+            self._state_html["stage"] = self._pick_lang_stage
+
+    def _load_picker_state(self, t: str) -> None:
+        if t == "DB":
+            self._pick_subtype = self._state_db.get("subtype")
+            self._pick_lang = self._state_db.get("lang")
+            self._pick_lang_stage = int(self._state_db.get("stage", 0) or 0)
+        else:  # HTML
+            self._pick_subtype = None
+            self._pick_lang = self._state_html.get("lang")
+            self._pick_lang_stage = int(self._state_html.get("stage", 0) or 0)

@@ -4,13 +4,19 @@
 #Warn
 
 ; ==== DPI FIX (Per-Monitor v2) ====
-try DllCall("SetThreadDpiAwarenessContext", "ptr", -4, "ptr")
-catch {
-    try DllCall("SetThreadDpiAwarenessContext", "ptr", -3, "ptr")
+
+try {
+    DllCall("SetThreadDpiAwarenessContext", "ptr", -4, "ptr")
+} catch {
+    try {
+        DllCall("SetThreadDpiAwarenessContext", "ptr", -3, "ptr")
+    } catch {
+    }
 }
 CoordMode "Mouse", "Screen"
 CoordMode "Pixel", "Screen"
 CoordMode "ToolTip", "Screen"
+
 ; =================
 
 ; ====== PATHS (profile-aware) ======
@@ -33,6 +39,203 @@ DirCreate(PROFILE_DIR)
 ; APP_DIR = папка профиля (всё профильное хранится тут)
 APP_DIR := PROFILE_DIR
 ; ===================================
+; ====== LOGGING (daily files) ======
+LOG_DIR := BASE_DIR "\logs"
+DirCreate(LOG_DIR)
+
+LogWrite(line) {
+    global LOG_DIR
+    t := FormatTime(, "HH:mm:ss")
+    d := FormatTime(, "dd_MM_yyyy")
+    logFile := LOG_DIR "\log_" d ".txt"
+    FileAppend(line " " t "`n", logFile, "UTF-8")
+}
+
+; Build a nice line for generated Ctrl+1..4 hotkeys using toast_state.txt (written by the app)
+LogGeneratedHotkey(hkN, tplN) {
+    stateFile := GENERATED_DIR "\..\toast_state.txt"
+    pickType := ""
+    pickLang := ""
+    pickSubtype := ""
+
+    try {
+        if FileExist(stateFile) {
+            txt := FileRead(stateFile, "UTF-8")
+            if RegExMatch(txt, "type=(.+)", &m1)
+                pickType := Trim(m1[1])
+            if RegExMatch(txt, "lang=(.+)", &m2)
+                pickLang := Trim(m2[1])
+            if RegExMatch(txt, "subtype=(.*)", &m3)
+                pickSubtype := Trim(m3[1])
+        }
+    } catch {
+    }
+
+    ; Action name by template number (tplN)
+    action := ""
+    if (tplN = 1)
+        action := "ZALIV"
+    else if (tplN = 2)
+        action := "ROLLBACK"
+    else if (tplN = 3)
+        action := "SITEMAP"
+    else if (tplN = 4)
+        action := "HIDE"
+    else
+        action := "HK" tplN
+
+    scope := ""
+    if (pickType != "" && pickSubtype != "")
+        scope := pickType "/" pickSubtype
+    else if (pickType != "")
+        scope := pickType
+
+    if (pickLang = "")
+        LogWrite("HOTKEY")
+    else if (scope != "")
+        LogWrite("^" hkN " " scope " " action " " pickLang)
+    else
+        LogWrite("^" hkN " " action " " pickLang)
+}
+
+
+
+; ===== Generated templates: copy+paste HK1..HK4 =====
+GENERATED_DIR := APP_DIR "\generated_templates"
+
+CopyFileToClipboardAndPaste(filePath) {
+    try {
+        if !FileExist(filePath) {
+            ToolTip("Нет файла: " filePath)
+            SetTimer(() => ToolTip(), -1200)
+            return
+        }
+
+        txt := FileRead(filePath, "UTF-8")
+
+        dn := GetCurrentDirNum()
+        if (dn != "") {
+            txt := StrReplace(txt, "__DIR_NUM__", dn)
+        }
+
+        if Trim(txt) = "" {
+            ToolTip("Файл пустой: " filePath)
+            SetTimer(() => ToolTip(), -1200)
+            return
+        }
+
+        A_Clipboard := ""
+        A_Clipboard := txt
+        ClipWait 1
+        Send "^v"
+        Sleep 50
+        Send "^{Home}"
+    } catch as e {
+        ToolTip("Ошибка: " e.Message)
+        SetTimer(() => ToolTip(), -1500)
+    }
+}
+; ===== end generated templates =====
+
+
+; ===== DIR_NUM queue (profile-aware) =====
+GetDirNumOverride() {
+    f := APP_DIR "\dirnum_override.txt"
+    try {
+        if FileExist(f) {
+            v := Trim(FileRead(f, "UTF-8"))
+            return v
+        }
+    } catch {
+        ; ignore
+    }
+    return ""
+}
+
+GetDirNumFromQueue() {
+    qf := APP_DIR "\dirnum_queue.txt"
+    if !FileExist(qf)
+        return ""
+
+    nums := []
+    for line in StrSplit(FileRead(qf, "UTF-8"), "`n") {
+        v := Trim(StrReplace(line, "`r"))
+        if v != ""
+            nums.Push(v)
+    }
+    if nums.Length = 0
+        return ""
+
+    idxFile := APP_DIR "\dirnum_queue_index.txt"
+    idx := 0
+    try {
+        if FileExist(idxFile)
+            idx := Integer(Trim(FileRead(idxFile, "UTF-8")))
+    } catch {
+        idx := 0
+    }
+
+    if (idx < 0 || idx >= nums.Length)
+        idx := 0
+
+    ; В AHK массивы 1-based, поэтому idx (0-based) -> idx+1
+    return nums[idx + 1]
+}
+
+GetCurrentDirNum() {
+    ov := GetDirNumOverride()
+    if (ov != "")
+        return ov
+    return GetDirNumFromQueue()
+}
+
+AdvanceDirNum(*) {
+    qf := APP_DIR "\dirnum_queue.txt"
+    if !FileExist(qf)
+        return
+
+    nums := []
+    for line in StrSplit(FileRead(qf, "UTF-8"), "`n") {
+        v := Trim(StrReplace(line, "`r"))
+        if v != ""
+            nums.Push(v)
+    }
+    if nums.Length = 0
+        return
+
+    idxFile := APP_DIR "\dirnum_queue_index.txt"
+    idx := 0
+    try {
+        if FileExist(idxFile)
+            idx := Integer(Trim(FileRead(idxFile, "UTF-8")))
+    } catch {
+        idx := 0
+    }
+
+    idx := idx + 1
+    if (idx >= nums.Length)
+        idx := 0
+
+    try {
+        FileDelete(idxFile)
+    } catch {
+        ; ignore
+    }
+    FileAppend(idx, idxFile, "UTF-8")
+}
+; ===== end DIR_NUM queue =====
+
+    ; по желанию можно показать подсказку:
+    ; ToolTip("D
+
+IsDBMode() {
+    ; DB режим = существует HK2.php
+    return FileExist(GENERATED_DIR "\HK2.php")
+}
+
+
+
+; ===== end generated hotkeys =====
 
 
 ; ===== Google file (ОБЩИЙ для всех профилей) =====
@@ -121,6 +324,49 @@ InitGoogleFile()
 SetTimer(MaybeUpdateGoogleFileFromClipboard, 350)
 ; ===== end Google file =====
 
+; ===== DIR_NUM NEXT hotkey (profile) =====
+DIRNUM_NEXT_HOTKEY_FILE := APP_DIR "\dirnum_next_hotkey.txt"
+Global DirNumNextHotkey := "#m"  ; default Win+M
+
+InitDirnumNextHotkey() {
+    global DIRNUM_NEXT_HOTKEY_FILE, DirNumNextHotkey, APP_DIR
+
+    DirCreate(APP_DIR)
+
+    try {
+        if FileExist(DIRNUM_NEXT_HOTKEY_FILE) {
+            v := Trim(FileRead(DIRNUM_NEXT_HOTKEY_FILE, "UTF-8"))
+            if (v != "")
+                DirNumNextHotkey := v
+        }
+    } catch {
+    }
+
+    if (DirNumNextHotkey = "")
+        DirNumNextHotkey := "#m"
+
+    ; гарантируем, что файл есть
+    try FileDelete(DIRNUM_NEXT_HOTKEY_FILE)
+    FileAppend(DirNumNextHotkey, DIRNUM_NEXT_HOTKEY_FILE, "UTF-8")
+}
+
+RegisterDirnumNextHotkey() {
+    global DirNumNextHotkey
+
+    hk := "$*" . DirNumNextHotkey
+    try {
+        Hotkey(hk, AdvanceDirNum, "On")
+    } catch {
+        ; если юзер ввёл фигню — откатим на Win+M
+        DirNumNextHotkey := "#m"
+        hk := "$*" . DirNumNextHotkey
+        Hotkey(hk, AdvanceDirNum, "On")
+    }
+}
+
+InitDirnumNextHotkey()
+RegisterDirnumNextHotkey()
+; ===== end DIR_NUM NEXT hotkey =====
 
 ; ===== Screenshots (PROFILE: daily folders + custom hotkey + name from clipboard) =====
 SCREEN_ROOT := APP_DIR "\Screenshots"
@@ -306,13 +552,11 @@ GDIP_TOKEN := Gdip_Startup()
 ; ===== Screen capture: GDI BitBlt + GDI+ save (no PowerShell, DPI-safe) =====
 
 CaptureVirtualScreenToPng(outPath) {
-    x := DllCall("user32\GetSystemMetrics", "int", 76, "int") ; SM_XVIRTUALSCREEN
-    y := DllCall("user32\GetSystemMetrics", "int", 77, "int") ; SM_YVIRTUALSCREEN
-    w := DllCall("user32\GetSystemMetrics", "int", 78, "int") ; SM_CXVIRTUALSCREEN
-    h := DllCall("user32\GetSystemMetrics", "int", 79, "int") ; SM_CYVIRTUALSCREEN
+    mon := GetSelectedMonitor()
+    GetMonitorRect(mon, &x, &y, &w, &h)
 
     if (w <= 0 || h <= 0)
-        throw Error("Bad virtual screen size")
+        throw Error("Bad monitor size")
 
     hdcScreen := DllCall("user32\GetDC", "ptr", 0, "ptr")
     if !hdcScreen
@@ -355,9 +599,7 @@ CaptureVirtualScreenToPng(outPath) {
 
     DllCall("gdi32\DeleteObject", "ptr", hbm)
 
-    ; Save PNG using fixed CLSID (safe)
     Gdip_SaveBitmapToPng(pBitmap, outPath)
-
     DllCall("gdiplus\GdipDisposeImage", "ptr", pBitmap)
 }
 
@@ -397,6 +639,217 @@ Gdip_SaveBitmapToPng(pBitmap, outPath) {
 }
 
 ; ===== end screenshots =====
+
+; ===== Screenshot screen selection =====
+GetSelectedMonitor() {
+    settingsFile := A_ScriptDir "\screenshot_screen.json"
+    mode := "auto"
+    idx := ""
+
+    if FileExist(settingsFile) {
+        txt := FileRead(settingsFile, "UTF-8")
+
+        if RegExMatch(txt, '"mode"\s*:\s*"([^"]+)"', &m)
+            mode := m[1]
+
+        if RegExMatch(txt, '"index"\s*:\s*(\d+)', &n)
+            idx := n[1]
+    }
+
+    if (mode = "screen" && idx != "") {
+        mon := Integer(idx) + 1
+        if (mon >= 1 && mon <= MonitorGetCount())
+            return mon
+    }
+
+    return MonitorGetPrimary()
+}
+
+GetMonitorRect(mon, &L, &T, &W, &H) {
+    MonitorGet(mon, &left, &top, &right, &bottom)
+    L := left
+    T := top
+    W := right - left
+    H := bottom - top
+}
+
+GetZalivkaMode() {
+    modeFile := APP_DIR "\mode.txt"
+    try {
+        m := Trim(FileRead(modeFile, "UTF-8"))
+        if (m = "db" || m = "html")
+            return m
+    } catch {
+    }
+    return "db"
+}
+
+HandleGeneratedHotkey(hkN, tplN, *) {
+    mode := GetZalivkaMode()
+
+    if (mode = "html" && tplN > 2) {
+    ToolTip("HTML: доступны Ctrl+1 и Ctrl+2")
+    SetTimer(() => ToolTip(), -700)
+    return
+    }
+    if (mode = "db" && tplN > 4) {
+        return
+    }
+
+    LogGeneratedHotkey(hkN, tplN)
+
+    CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php")
+    ShowToastForGenerated(tplN)
+}
+
+ShowInsertToast(text, colorHex := "00FF00", ms := 2000) {
+    static gui := 0, lbl := 0
+
+    if !gui {
+        gui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20") ; E0x20 = click-through
+        gui.BackColor := "101826"
+        gui.MarginX := 14
+        gui.MarginY := 10
+        gui.Opt("+LastFound")
+        WinSetTransparent(210, gui.Hwnd) ; полупрозрачность (0..255)
+
+        lbl := gui.AddText("vLbl c" colorHex " s12 Bold", text)
+    } else {
+        lbl.Opt("c" colorHex)
+        lbl.Text := text
+    }
+
+    ; ---- позиция: низ экрана справа/по центру ----
+    w := 10, h := 10
+    gui.Show("NA AutoSize")
+    gui.GetPos(, , &gw, &gh)
+
+    screenW := A_ScreenWidth
+    screenH := A_ScreenHeight
+    x := (screenW - gw) // 2
+    y := screenH - gh - 40
+
+    gui.Show("NA x" x " y" y)
+
+    SetTimer(() => (gui.Hide()), -ms)
+}
+
+
+RegisterGeneratedHotkeys() {
+    ; Desired mapping for DB mode:
+    ;   Ctrl+1 -> HK1 (заливка)
+    ;   Ctrl+2 -> HK3 (sitemap)
+    ;   Ctrl+3 -> HK4 (hide)
+    ;   Ctrl+4 -> HK2 (rollback)
+    ;
+    ; HTML mode uses only HK1..HK2 (Ctrl+1, Ctrl+2).
+
+    mode := GetZalivkaMode()
+
+    if (mode = "html") {
+        hkMap := Map(1, 1, 2, 2)
+    } else {
+        hkMap := Map(1, 1, 2, 3, 3, 4, 4, 2)
+    }
+
+    for hkN, tplN in hkMap {
+        Hotkey("$*^" hkN, HandleGeneratedHotkey.Bind(hkN, tplN), "On")
+    }
+}
+
+; ===== Toast notification =====
+
+ShowToastForGenerated(n) {
+    stateFile := GENERATED_DIR "\..\toast_state.txt"
+
+    if !FileExist(stateFile)
+        return
+
+    pickType := ""
+    pickLang := ""
+    pickSubtype := ""
+
+    txt := FileRead(stateFile, "UTF-8")
+
+    if RegExMatch(txt, "type=(.+)", &m1)
+    pickType := Trim(m1[1])
+
+    if RegExMatch(txt, "lang=(.+)", &m2)
+        pickLang := Trim(m2[1])
+
+    if RegExMatch(txt, "subtype=(.*)", &m3)
+        pickSubtype := Trim(m3[1])
+
+
+    ; ---------- Формируем текст ----------
+    text := ""
+    color := "0xffffff"
+
+    ; Ctrl+1 - заливка (зелёный)
+    ; Ctrl+2 - sitemap (синий)
+    ; Ctrl+3 - hide (фиолетовый)
+    ; Ctrl+4 - rollback (красный)
+
+    prefix := (pickType != "" ? pickType " " : "")
+    lang := pickLang
+
+    if (n = 1) {
+        text := prefix "Заливка " lang
+        color := "0x2e7d32"
+    }
+    else if (n = 3) {
+        text := prefix "Sitemap " lang
+        color := "0x1565c0"
+    }
+    else if (n = 4) {
+        text := prefix "Hide " lang
+        color := "0x6a1b9a"
+    }
+    else if (n = 2) {
+        text := prefix "Rollback " lang
+        color := "0xc62828"
+    }
+    else {
+        text := prefix "HK" n " " lang
+        color := "0x999999"
+    }
+
+
+; ---------- Создаём GUI ----------
+    toastGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+    toastGui.BackColor := "0x111827"
+
+    toastGui.MarginX := 18
+    toastGui.MarginY := 12
+
+    toastGui.SetFont("s14 Bold", "Segoe UI")
+    txtCtrl := toastGui.AddText("c" color " Center", text)
+
+
+    toastGui.Show("AutoSize NoActivate")
+
+    WinGetPos(&x, &y, &w, &h, toastGui.Hwnd)
+    ; ---- rounded corners ----
+    radius := 18
+    rgn := DllCall("gdi32\CreateRoundRectRgn"
+        , "int", 0, "int", 0, "int", w + 1, "int", h + 1
+        , "int", radius, "int", radius
+        , "ptr")
+    DllCall("user32\SetWindowRgn", "ptr", toastGui.Hwnd, "ptr", rgn, "int", true)
+
+    ; a bit less transparent to feel like an alert
+    try WinSetTransparent(245, toastGui.Hwnd)
+
+    screenW := A_ScreenWidth
+    screenH := A_ScreenHeight
+
+    posX := (screenW - w) // 2
+    posY := screenH - h - 60
+
+    toastGui.Show("x" posX " y" posY " NoActivate")
+
+    SetTimer(() => toastGui.Destroy(), -2000)
+}
 
 
 ; ====== PYTHON_BEGIN ======
