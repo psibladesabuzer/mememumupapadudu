@@ -1908,7 +1908,7 @@ class MainWindow(QMainWindow):
             self.dir_num_edit.setText(current)
 
             try:
-                self._regen_templates_with_new_dirnum()
+                self._regen_templates_with_new_dirnum(silent=True)
             except Exception:
                 pass
 

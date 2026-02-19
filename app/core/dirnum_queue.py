@@ -43,7 +43,11 @@ def load_index() -> int:
     if not p.exists():
         return 1
     try:
-        return max(1, int(p.read_text(encoding="utf-8").strip()))
+        raw = p.read_text(encoding="utf-8").strip().lstrip("\ufeff")
+        m = re.search(r"\d+", raw)
+        if not m:
+            return 1
+        return max(1, int(m.group(0)))
     except Exception:
         return 1
 

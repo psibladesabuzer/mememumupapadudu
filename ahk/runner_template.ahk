@@ -729,7 +729,11 @@ ShowInsertToast(text, colorHex := "00FF00", ms := 2000) {
 
     gui.Show("NA x" x " y" y)
 
-    SetTimer(() => (gui.Hide()), -ms)
+        SetTimer(HideToastGui.Bind(gui), -ms)
+}
+
+HideToastGui(gui) {
+    gui.Hide()
 }
 
 
@@ -749,17 +753,10 @@ RegisterGeneratedHotkeys() {
     ; --- DIR_NUM NEXT HOTKEY ---
     hkFile := APP_DIR "\dirnum_next_hotkey.txt"
 
-    MsgBox("APP_DIR=" APP_DIR "`n"
-        . "hkFile=" hkFile "`n"
-        . "exists=" FileExist(hkFile))
-
     if FileExist(hkFile) {
         hk := Trim(FileRead(hkFile, "UTF-8"))
-        MsgBox("HOTKEY TEXT=[" hk "]")
-
         try {
             Hotkey("$*" hk, AdvanceDirNum, "On")
-            MsgBox("Hotkey registered OK: " hk)
         } catch as e {
             MsgBox("Hotkey register ERROR:`n" e.Message)
         }
