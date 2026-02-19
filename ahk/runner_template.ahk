@@ -163,23 +163,22 @@ GetDirNumFromQueue() {
         if v != ""
             nums.Push(v)
     }
-    if nums.Length = 0
+    if (nums.Length = 0)
         return ""
 
     idxFile := APP_DIR "\dirnum_queue_index.txt"
-    idx := 0
-    try {
-        if FileExist(idxFile)
-            idx := Integer(Trim(FileRead(idxFile, "UTF-8")))
-    } catch {
-        idx := 0
+    idx := 1
+
+    if FileExist(idxFile) {
+        raw := Trim(FileRead(idxFile, "UTF-8"))
+        if RegExMatch(raw, "^\d+$")
+            idx := raw + 0
     }
 
-    if (idx < 0 || idx >= nums.Length)
-        idx := 0
+    if (idx < 1 || idx > nums.Length)
+        idx := 1
 
-    ; В AHK массивы 1-based, поэтому idx (0-based) -> idx+1
-    return nums[idx + 1]
+    return nums[idx]
 }
 
 GetCurrentDirNum() {
@@ -200,28 +199,27 @@ AdvanceDirNum(*) {
         if v != ""
             nums.Push(v)
     }
-    if nums.Length = 0
+    if (nums.Length = 0)
         return
 
     idxFile := APP_DIR "\dirnum_queue_index.txt"
-    idx := 0
-    try {
-        if FileExist(idxFile)
-            idx := Integer(Trim(FileRead(idxFile, "UTF-8")))
-    } catch {
-        idx := 0
+    idx := 1
+
+    if FileExist(idxFile) {
+        raw := Trim(FileRead(idxFile, "UTF-8"))
+        if RegExMatch(raw, "^\d+$")
+            idx := raw + 0
     }
 
     idx := idx + 1
-    if (idx >= nums.Length)
-        idx := 0
+    if (idx > nums.Length)
+        idx := 1
 
-    try {
-        FileDelete(idxFile)
-    } catch {
-        ; ignore
-    }
+    try FileDelete(idxFile)
     FileAppend(idx, idxFile, "UTF-8")
+
+    ToolTip("DIR_NUM -> " nums[idx])
+    SetTimer(() => ToolTip(), -700)
 }
 ; ===== end DIR_NUM queue =====
 
@@ -736,14 +734,6 @@ ShowInsertToast(text, colorHex := "00FF00", ms := 2000) {
 
 
 RegisterGeneratedHotkeys() {
-    ; Desired mapping for DB mode:
-    ;   Ctrl+1 -> HK1 (заливка)
-    ;   Ctrl+2 -> HK3 (sitemap)
-    ;   Ctrl+3 -> HK4 (hide)
-    ;   Ctrl+4 -> HK2 (rollback)
-    ;
-    ; HTML mode uses only HK1..HK2 (Ctrl+1, Ctrl+2).
-
     mode := GetZalivkaMode()
 
     if (mode = "html") {
@@ -754,6 +744,25 @@ RegisterGeneratedHotkeys() {
 
     for hkN, tplN in hkMap {
         Hotkey("$*^" hkN, HandleGeneratedHotkey.Bind(hkN, tplN), "On")
+    }
+
+    ; --- DIR_NUM NEXT HOTKEY ---
+    hkFile := APP_DIR "\dirnum_next_hotkey.txt"
+
+    MsgBox("APP_DIR=" APP_DIR "`n"
+        . "hkFile=" hkFile "`n"
+        . "exists=" FileExist(hkFile))
+
+    if FileExist(hkFile) {
+        hk := Trim(FileRead(hkFile, "UTF-8"))
+        MsgBox("HOTKEY TEXT=[" hk "]")
+
+        try {
+            Hotkey("$*" hk, AdvanceDirNum, "On")
+            MsgBox("Hotkey registered OK: " hk)
+        } catch as e {
+            MsgBox("Hotkey register ERROR:`n" e.Message)
+        }
     }
 }
 
@@ -851,41 +860,6 @@ ShowToastForGenerated(n) {
     SetTimer(() => toastGui.Destroy(), -2000)
 }
 
-NextDirNumInQueue() {
-    idxFile := APP_DIR "\dirnum_queue_index.txt"
-    qFile   := APP_DIR "\dirnum_queue.txt"
-
-    if !FileExist(qFile)
-        return
-
-    q := Trim(FileRead(qFile, "UTF-8"))
-    if (q = "")
-        return
-
-    arr := StrSplit(q, "`n", "`r")
-    ; чистим пустые строки
-    clean := []
-    for _, v in arr {
-        v := Trim(v)
-        if (v != "")
-            clean.Push(v)
-    }
-    if (clean.Length = 0)
-        return
-
-    idx := 0
-    try idx := Integer(Trim(FileRead(idxFile, "UTF-8")))
-    catch
-
-    if (idx < 0)
-        idx := 0
-    if (idx >= clean.Length)
-        idx := 0
-
-    idx := Mod(idx + 1, clean.Length)
-    FileDelete(idxFile)
-    FileAppend(idx, idxFile, "UTF-8")
-}
 
 ; ====== PYTHON_BEGIN ======
 ; Python inserts generated code here

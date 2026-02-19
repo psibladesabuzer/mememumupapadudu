@@ -29,7 +29,6 @@ def save_queue(nums: List[str]) -> None:
     p = dirnum_queue_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("\n".join(nums) + ("\n" if nums else ""), encoding="utf-8")
-    dirnum_queue_index_path().write_text("0", encoding="utf-8")
 
 
 def load_queue() -> List[str]:
@@ -42,16 +41,14 @@ def load_queue() -> List[str]:
 def load_index() -> int:
     p = dirnum_queue_index_path()
     if not p.exists():
-        return 0
+        return 1
     try:
-        return max(0, int(p.read_text(encoding="utf-8").strip()))
+        return max(1, int(p.read_text(encoding="utf-8").strip()))
     except Exception:
-        return 0
-
+        return 1
 
 def save_index(i: int) -> None:
-    dirnum_queue_index_path().write_text(str(max(0, i)), encoding="utf-8")
-
+    dirnum_queue_index_path().write_text(str(max(1, i)), encoding="utf-8")
 
 def set_override(value: str) -> None:
     v = (value or "").strip()

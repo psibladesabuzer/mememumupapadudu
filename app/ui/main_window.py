@@ -401,7 +401,7 @@ class MainWindow(QMainWindow):
         self.edt_lang_search = QLineEdit()
         self.edt_lang_search.setPlaceholderText("например FR или EN-FR")
         self.edt_lang_search.setFixedWidth(190)
-        self.edt_lang_search.textChanged.connect(self._on_lang_search_changed)
+        #self.edt_lang_search.textChanged.connect(self._on_lang_search_changed)
 
         self.lbl_lang_search.setVisible(True)
         self.edt_lang_search.setVisible(True)
@@ -676,6 +676,16 @@ class MainWindow(QMainWindow):
         # =========================================================
         self.tray: QSystemTrayIcon | None = None
         self._setup_tray()
+
+        # =========================================================
+        # DIR_NUM авто-обновление (если AHK переключил индекс)
+        # =========================================================
+        self._last_dirnum_seen = None
+
+        self._dirnum_poll_timer = QTimer(self)
+        self._dirnum_poll_timer.setInterval(400)
+        self._dirnum_poll_timer.timeout.connect(self._poll_dirnum_and_regen_if_changed)
+        self._dirnum_poll_timer.start()
 
     # =========================================================
     # PreZ toggle
@@ -1712,10 +1722,11 @@ class MainWindow(QMainWindow):
                     except Exception:
                         pass
 
-    def _regen_templates_with_new_dirnum(self) -> None:
+    def _regen_templates_with_new_dirnum(self, *, silent: bool = False) -> None:
         try:
             if self._pick_lang_stage != 2 or not getattr(self, "_last_template_src", None):
-                QMessageBox.information(self, "DIR_NUM", "Сначала выберите и подтвердите язык (зелёным).")
+                if not silent:
+                    QMessageBox.information(self, "DIR_NUM", "Сначала выберите и подтвердите язык (зелёным).")
                 return
 
             src = self._last_template_src
@@ -1723,7 +1734,20 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "DIR_NUM", f"Исходный шаблон не найден:\n{src}")
                 return
 
-            dir_num = (self.dir_num_edit.text() or "").strip()
+            queue = load_queue() or []
+            idx = int(load_index() or 1)
+
+            if not queue:
+                QMessageBox.warning(self, "DIR_NUM", "Очередь DIR_NUM пуста.")
+                return
+
+            if idx < 1:
+                idx = 1
+            if idx > len(queue):
+                idx = 1
+
+            dir_num = str(queue[idx - 1]).strip()
+            self.dir_num_edit.setText(dir_num)
             if not dir_num:
                 QMessageBox.warning(self, "DIR_NUM", "Введите DIR_NUM (только цифры).")
                 return
@@ -1763,23 +1787,26 @@ class MainWindow(QMainWindow):
             return
         try:
             queue = load_queue() or []
-            idx = int(load_index() or 0)
+            idx = int(load_index() or 1)
         except Exception:
             queue = []
-            idx = 0
+            idx = 1
 
         total = len(queue)
         self.lbl_dirnum_queue_info.setText(f"Очередь DIR_NUM: {total}")
 
         current = None
-        if total and 0 <= idx < total:
-            current = str(queue[idx])
+        if total:
+            if idx < 1:
+                idx = 1
+            if idx > total:
+                idx = 1
+            current = str(queue[idx - 1])
 
         self.lbl_dirnum_queue_current.setText(f"Текущий DIR_NUM: {current or '—'}")
         self.btn_dirnum_queue_next.setEnabled(total > 0)
 
         if apply_to_input and current:
-            # если пользователь уже вручную ввёл DIR_NUM — не затираем
             if not (self.dir_num_edit.text() or "").strip():
                 self.dir_num_edit.setText(current)
 
@@ -1810,7 +1837,7 @@ class MainWindow(QMainWindow):
 
         # подставляем первый
         self.dir_num_edit.setText(str(queue[0]))
-        self._dirnum_queue_refresh(apply_to_input=False)
+        self._dirnum_queue_refresh(apply_to_input=True)
 
         # пересобираем HK под новый DIR_NUM из очереди (если язык уже подтверждён)
         try:
@@ -1819,54 +1846,94 @@ class MainWindow(QMainWindow):
             pass
 
     def _dirnum_queue_next(self) -> None:
-        """Переход к следующему DIR_NUM (кнопка). Реализация без отдельного save_index: вращаем список."""
         try:
             queue = load_queue() or []
+            idx = int(load_index() or 1)
         except Exception:
             queue = []
+            idx = 1
 
         if not queue:
             self._dirnum_queue_refresh(apply_to_input=False)
+            return
 
-        # пересобираем HK под новый DIR_NUM из очереди (если язык уже подтверждён)
+        total = len(queue)
+
+        idx += 1
+        if idx > total:
+            idx = 1
+
+        try:
+            from app.core.dirnum_queue import save_index
+            save_index(idx)
+        except Exception as e:
+            QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить индекс: {e}")
+            return
+
+        current = str(queue[idx - 1])
+        self.dir_num_edit.setText(current)
+
+        self._dirnum_queue_refresh(apply_to_input=False)
+
         try:
             self._regen_templates_with_new_dirnum()
         except Exception:
             pass
-            return
 
-        # Сдвиг на 1 вперёд
-        if len(queue) > 1:
-            queue = queue[1:] + [queue[0]]
-
+    def _poll_dirnum_and_regen_if_changed(self) -> None:
         try:
-            save_queue(queue)
-        except Exception as e:
-            QMessageBox.critical(self, "DIR_NUM", f"Не удалось обновить очередь: {e}")
+            queue = load_queue() or []
+            idx = int(load_index() or 1)
+        except Exception:
             return
 
-        self.dir_num_edit.setText(str(queue[0]))
-        self._dirnum_queue_refresh(apply_to_input=False)
+        if not queue:
+            return
 
-    def _on_lang_search_changed(self, text: str) -> None:
-        self._lang_filter = (text or "").strip()
-        self._rebuild_lang_buttons()
+        if idx < 1:
+            idx = 1
+        if idx > len(queue):
+            idx = len(queue)
 
-    def _save_current_picker_state(self) -> None:
-        if self._pick_type == "DB":
-            self._state_db["subtype"] = self._pick_subtype
-            self._state_db["lang"] = self._pick_lang
-            self._state_db["stage"] = self._pick_lang_stage
-        elif self._pick_type == "HTML":
-            self._state_html["lang"] = self._pick_lang
-            self._state_html["stage"] = self._pick_lang_stage
+        current = str(queue[idx - 1])
 
-    def _load_picker_state(self, t: str) -> None:
-        if t == "DB":
-            self._pick_subtype = self._state_db.get("subtype")
-            self._pick_lang = self._state_db.get("lang")
-            self._pick_lang_stage = int(self._state_db.get("stage", 0) or 0)
-        else:  # HTML
-            self._pick_subtype = None
-            self._pick_lang = self._state_html.get("lang")
-            self._pick_lang_stage = int(self._state_html.get("stage", 0) or 0)
+        # UI refresh
+        self.lbl_dirnum_queue_current.setText(f"Текущий DIR_NUM: {current}")
+        self.lbl_dirnum_queue_info.setText(f"Очередь DIR_NUM: {len(queue)}")
+
+        # If changed -> regen templates
+        if self._last_dirnum_seen != current:
+            self._last_dirnum_seen = current
+
+            self.dir_num_edit.setText(current)
+
+            try:
+                self._regen_templates_with_new_dirnum()
+            except Exception:
+                pass
+
+
+def _on_lang_search_changed(self, text: str) -> None:
+    self._lang_filter = (text or "").strip()
+    self._rebuild_lang_buttons()
+
+
+def _save_current_picker_state(self) -> None:
+    if self._pick_type == "DB":
+        self._state_db["subtype"] = self._pick_subtype
+        self._state_db["lang"] = self._pick_lang
+        self._state_db["stage"] = self._pick_lang_stage
+    elif self._pick_type == "HTML":
+        self._state_html["lang"] = self._pick_lang
+        self._state_html["stage"] = self._pick_lang_stage
+
+
+def _load_picker_state(self, t: str) -> None:
+    if t == "DB":
+        self._pick_subtype = self._state_db.get("subtype")
+        self._pick_lang = self._state_db.get("lang")
+        self._pick_lang_stage = int(self._state_db.get("stage", 0) or 0)
+    else:  # HTML
+        self._pick_subtype = None
+        self._pick_lang = self._state_html.get("lang")
+        self._pick_lang_stage = int(self._state_html.get("stage", 0) or 0)
