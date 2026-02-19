@@ -5,7 +5,7 @@ a = Analysis(
     ['app\\main.py'],
     pathex=[],
     binaries=[('AutoHotkeyUX.exe', '.')],
-    datas=[('assets', 'assets'), ('ahk', 'ahk'), ('Scripts', 'Scripts'), ('app\\ui', 'app\\ui')],
+    datas=[('assets', 'assets'), ('ahk', 'ahk'), ('app\\ui\\style.qss', 'app/ui'), ('app\\ui\\style_light.qss', 'app/ui')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

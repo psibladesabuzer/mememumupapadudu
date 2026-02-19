@@ -6,26 +6,22 @@ from typing import List, Tuple
 from app.core.paths import dirnum_queue_path, dirnum_queue_index_path, dirnum_override_path
 
 
-def parse_dirnums_from_lines(text: str) -> List[str]:
-    """
-    Принимает 1..200 строк формата: OLDSINGLE/DE/12345 (и т.п.)
-    Забирает только числа после последнего '/'.
-    """
-    out: List[str] = []
-    seen = set()
-
-    for raw in (text or "").splitlines():
-        s = raw.strip()
-        if not s:
+def parse_dirnums_from_lines(text: str) -> list[str]:
+    out: list[str] = []
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line:
             continue
-        m = re.search(r"/(\d+)\s*$", s)
+
+        part = line.rsplit("/", 1)[-1].strip()
+        if not part:
+            continue
+
+        m = re.search(r"\d+", part)
         if not m:
             continue
-        num = m.group(1)
-        if num not in seen:
-            seen.add(num)
-            out.append(num)
 
+        out.append(m.group(0))
     return out
 
 

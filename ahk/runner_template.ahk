@@ -851,6 +851,41 @@ ShowToastForGenerated(n) {
     SetTimer(() => toastGui.Destroy(), -2000)
 }
 
+NextDirNumInQueue() {
+    idxFile := APP_DIR "\dirnum_queue_index.txt"
+    qFile   := APP_DIR "\dirnum_queue.txt"
+
+    if !FileExist(qFile)
+        return
+
+    q := Trim(FileRead(qFile, "UTF-8"))
+    if (q = "")
+        return
+
+    arr := StrSplit(q, "`n", "`r")
+    ; чистим пустые строки
+    clean := []
+    for _, v in arr {
+        v := Trim(v)
+        if (v != "")
+            clean.Push(v)
+    }
+    if (clean.Length = 0)
+        return
+
+    idx := 0
+    try idx := Integer(Trim(FileRead(idxFile, "UTF-8")))
+    catch
+
+    if (idx < 0)
+        idx := 0
+    if (idx >= clean.Length)
+        idx := 0
+
+    idx := Mod(idx + 1, clean.Length)
+    FileDelete(idxFile)
+    FileAppend(idx, idxFile, "UTF-8")
+}
 
 ; ====== PYTHON_BEGIN ======
 ; Python inserts generated code here
