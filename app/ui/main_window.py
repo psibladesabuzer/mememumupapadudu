@@ -340,7 +340,7 @@ class MainWindow(QMainWindow):
         # --- DIR_NUM queue (bulk paste from Excel) ---
         self.dirnum_bulk = QPlainTextEdit()
         self.dirnum_bulk.setPlaceholderText(
-            "Вставь сюда 1..200 строк из Excel"
+            "Вставь сюда пути архивов (все), пример: CSN/OLDSINGLE/EN/1"
         )
         self.dirnum_bulk.setFixedHeight(120)
 
