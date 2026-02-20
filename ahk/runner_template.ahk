@@ -90,12 +90,17 @@ LogGeneratedHotkey(hkN, tplN) {
     else if (pickType != "")
         scope := pickType
 
+    dirNum := GetCurrentDirNum()
+    if (dirNum = "")
+        dirNum := "None"
+    dirNumPart := " DIRNUM-" dirNum
+
     if (pickLang = "")
-        LogWrite("HOTKEY")
+        LogWrite("HOTKEY" dirNumPart)
     else if (scope != "")
-        LogWrite("^" hkN " " scope " " action " " pickLang)
+        LogWrite("^" hkN " " scope " " action " " pickLang dirNumPart)
     else
-        LogWrite("^" hkN " " action " " pickLang)
+        LogWrite("^" hkN " " action " " pickLang dirNumPart)
 }
 
 
@@ -353,14 +358,21 @@ RegisterDirnumNextHotkey() {
 
     hk := "$*" . DirNumNextHotkey
     try {
-        Hotkey(hk, AdvanceDirNum, "On")
+        Hotkey(hk, HandleDirnumNextHotkey, "On")
     } catch {
         ; если юзер ввёл фигню — откатим на Win+M
         DirNumNextHotkey := "#m"
         hk := "$*" . DirNumNextHotkey
-        Hotkey(hk, AdvanceDirNum, "On")
+        Hotkey(hk, HandleDirnumNextHotkey, "On")
     }
 }
+
+HandleDirnumNextHotkey(*) {
+    global DirNumNextHotkey
+    LogWrite("HOTKEY " DirNumNextHotkey " DIRNUM_NEXT")
+    AdvanceDirNum()
+}
+
 
 InitDirnumNextHotkey()
 RegisterDirnumNextHotkey()
@@ -435,6 +447,8 @@ SanitizeFileNameKeepDots(s) {
 }
 
 BuildScreenshotBaseNameFromClipboard() {
+    global active
+
     clip := ""
     try {
         clip := A_Clipboard
@@ -458,6 +472,9 @@ BuildScreenshotBaseNameFromClipboard() {
         return ""
 
     clipNoProto := RegExReplace(clip, "i)^https?://", "")
+
+    if (active = "zalivka")
+        return SanitizeFileNameKeepDots(clipNoProto)
 
     domain := clipNoProto
     if RegExMatch(clipNoProto, "i)^([^/]+)", &m1)
@@ -523,6 +540,7 @@ TakeScreenshot() {
 
     try {
         CaptureVirtualScreenToPng(shotPath)
+        LogWrite("HOTKEY " ScreenshotHotkey " SCREENSHOT " shotPath)
     } catch {
         ; ничего не делаем
     }
@@ -756,7 +774,7 @@ RegisterGeneratedHotkeys() {
     if FileExist(hkFile) {
         hk := Trim(FileRead(hkFile, "UTF-8"))
         try {
-            Hotkey("$*" hk, AdvanceDirNum, "On")
+            Hotkey("$*" hk, HandleDirnumNextHotkey, "On")
         } catch as e {
             MsgBox("Hotkey register ERROR:`n" e.Message)
         }

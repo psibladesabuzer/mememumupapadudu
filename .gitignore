@@ -1,27 +1,2 @@
-# venv
-.venv/
-venv/
-
-# Python cache
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-
-# PyInstaller
-build/
-dist/
-
-# IDE
-.idea/
-.vscode/
-
-# Logs
-*.log
-
-# OS
-Thumbs.db
-.DS_Store
-
-# Exe (на всякий)
-*.exe
+#dir
+Scripts/

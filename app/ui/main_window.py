@@ -985,7 +985,7 @@ class MainWindow(QMainWindow):
 
         if show_hint:
             lang = self._pick_lang
-            self.lbl_hint_normal.setText(f"Обычный {lang}")
+            self.lbl_hint_normal.setText(f"Заливка {lang}")
             self.lbl_hint_rollback.setText(f"Rollback {lang}")
             self.lbl_hint_sitemap.setText(f"Sitemap {lang}")
 
@@ -1596,8 +1596,11 @@ class MainWindow(QMainWindow):
                     continue
 
                 fn_name = f"HK_{i}"
+                combo_for_log = combo.replace('"', "'")
+                name_for_log = name.replace('"', "'")
 
                 func_lines.append(f"{fn_name}() {{")
+                func_lines.append(f'    LogWrite("HOTKEY {combo_for_log} {name_for_log}")')
                 if action == "msgbox":
                     safe = payload.replace('"', "'")
                     func_lines.append(f'    MsgBox("{safe}")')
@@ -1620,20 +1623,9 @@ class MainWindow(QMainWindow):
             active = get_active_profile()
 
             if active == "zalivka":
-                # === dynamic mode flag for AHK ===
-                mode_file = generated_templates_dir().parent / "mode.txt"
-                mode = "html" if self._pick_type == "HTML" else "db"
-                mode_file.write_text(mode, encoding="utf-8")
-                toast_file = generated_templates_dir().parent / "toast_state.txt"
-
-                toast_file.write_text(
-                    f"type={self._pick_type}\n"
-                    f"lang={self._pick_lang}\n"
-                    f"subtype={self._pick_subtype or ''}\n",
-                    encoding="utf-8"
-                )
 
                 # === end flag ===
+                self._write_runtime_pick_state()
                 reg_lines.append("RegisterGeneratedHotkeys()")
 
             gen_lines: list[str] = []
@@ -1698,6 +1690,19 @@ class MainWindow(QMainWindow):
             return None
         return php_files[0]
 
+    def _resolved_pick_lang(self) -> str | None:
+        """Returns selected language, falling back to template source folder name."""
+        if self._pick_lang:
+            return self._pick_lang
+
+        src = getattr(self, "_last_template_src", None)
+        if isinstance(src, Path):
+            try:
+                return src.parent.name or None
+            except Exception:
+                return None
+        return None
+
     def _generate_lang_templates(self) -> None:
         src = self._selected_php_path()
         if not src:
@@ -1711,6 +1716,7 @@ class MainWindow(QMainWindow):
 
         out_dir = generated_templates_dir()
         write_variants(src, out_dir, dir_num)
+        self._write_runtime_pick_state()
 
         # HTML uses only HK1..HK2; DB uses HK1..HK4
         if getattr(self, "_pick_type", None) == "HTML":
@@ -1762,6 +1768,7 @@ class MainWindow(QMainWindow):
                     p.unlink()
 
             write_variants(src, out_dir, dir_num)
+            self._write_runtime_pick_state()
 
             # визуальный фидбек
             self.btn_dirnum_save.setStyleSheet("background-color: #2e7d32; color: white; font-weight: 700;")
@@ -1775,6 +1782,19 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"{type(e).__name__}: {e}")
+
+    def _write_runtime_pick_state(self) -> None:
+        mode_file = generated_templates_dir().parent / "mode.txt"
+        mode = "html" if self._pick_type == "HTML" else "db"
+        mode_file.write_text(mode, encoding="utf-8")
+
+        toast_file = generated_templates_dir().parent / "toast_state.txt"
+        toast_file.write_text(
+            f"type={self._pick_type or ''}\n"
+            f"lang={self._pick_lang or ''}\n"
+            f"subtype={self._pick_subtype or ''}\n",
+            encoding="utf-8",
+        )
 
     def _update_dirnum_save_enabled(self) -> None:
         ok = bool((self.dir_num_edit.text() or "").strip())
@@ -1815,7 +1835,7 @@ class MainWindow(QMainWindow):
         raw = self.dirnum_bulk.toPlainText() or ""
         lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
         if not lines:
-            QMessageBox.information(self, "DIR_NUM", "Вставьте строки в поле (1..200) и нажмите 'Сохранить список'.")
+            QMessageBox.information(self, "DIR_NUM", "Вставь сюда пути архивов (все), пример: CSN/OLDSINGLE/EN/1.")
             return
 
         try:
