@@ -157,6 +157,9 @@ def dirnum_queue_index_path() -> Path:
 def dirnum_override_path() -> Path:
     return profile_dir() / "dirnum_override.txt"
 
+def dirnum_floating_enabled_path() -> Path:
+    return profile_dir() / "dirnum_floating_enabled.txt"
+
 def scripts_status() -> tuple[bool, str, Path]:
     p = scripts_dir()
 

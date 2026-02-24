@@ -40,6 +40,7 @@ from app.core.paths import generated_templates_dir
 from app.core.paths import scripts_status
 from app.core.templates import ensure_index_template
 from app.core.paths import (
+    dirnum_floating_enabled_path,
     dirnum_next_hotkey_path,
     runtime_ahk_path,
     rename_sitemap_template_path,
@@ -64,6 +65,67 @@ from app.core.screenshot_settings import (
     load_screenshot_screen_settings,
     save_screenshot_screen_settings,
 )
+
+class DirnumFloatingWidget(QWidget):
+    def __init__(self, *, on_prev, on_next, on_apply_manual):
+        super().__init__(None, Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setWindowTitle("DIR_NUM")
+        self.setObjectName("dirnumFloating")
+        self.setMinimumWidth(280)
+
+        self._drag_offset = None
+        self._on_prev = on_prev
+        self._on_next = on_next
+        self._on_apply_manual = on_apply_manual
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(10, 10, 10, 10)
+        root.setSpacing(8)
+
+        self.lbl_title = QLabel("DIR_NUM")
+        self.lbl_title.setStyleSheet("font-weight: 700;")
+
+        self.edt_dirnum = QLineEdit()
+        self.edt_dirnum.setPlaceholderText("Введите DIR_NUM")
+        self.edt_dirnum.setValidator(QIntValidator(0, 999999, self))
+        self.edt_dirnum.returnPressed.connect(self._apply_manual)
+
+        row_btns = QHBoxLayout()
+        self.btn_prev = QPushButton("← Назад")
+        self.btn_next = QPushButton("Дальше →")
+        self.btn_prev.clicked.connect(self._on_prev)
+        self.btn_next.clicked.connect(self._on_next)
+        row_btns.addWidget(self.btn_prev)
+        row_btns.addWidget(self.btn_next)
+
+        root.addWidget(self.lbl_title)
+        root.addWidget(self.edt_dirnum)
+        root.addLayout(row_btns)
+
+    def _apply_manual(self) -> None:
+        self._on_apply_manual((self.edt_dirnum.text() or "").strip())
+
+    def set_dirnum(self, value: str) -> None:
+        self.edt_dirnum.setText((value or "").strip())
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.LeftButton:
+            self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        if self._drag_offset and event.buttons() & Qt.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_offset)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        self._drag_offset = None
+        super().mouseReleaseEvent(event)
+
 
 
 def resource_path(relative: str) -> Path:
@@ -106,6 +168,8 @@ class MainWindow(QMainWindow):
         # Профильные файлы (из active_profile)
         self.screenshot_hotkey_file = screenshot_hotkey_path()
         self.screenshots_enabled_file = screenshots_enabled_path()
+
+        self.dirnum_floating_widget: DirnumFloatingWidget | None = None
 
         root = QWidget()
         root_layout = QVBoxLayout(root)
@@ -279,6 +343,15 @@ class MainWindow(QMainWindow):
         row_screen.addWidget(self.cmb_screenshot_screen, 1)
         row_screen.addStretch(1)
 
+        row_dirnum_float = QHBoxLayout()
+        row_dirnum_float.setSpacing(10)
+        self.lbl_dirnum_float = QLabel("Плавающий виджет DIR_NUM:")
+        self.btn_dirnum_float_toggle = QPushButton("Включить")
+        self.btn_dirnum_float_toggle.clicked.connect(self._toggle_dirnum_floating_widget)
+        row_dirnum_float.addWidget(self.lbl_dirnum_float)
+        row_dirnum_float.addWidget(self.btn_dirnum_float_toggle)
+        row_dirnum_float.addStretch(1)
+
         hint = QLabel(
             "Подсказка: ^ = Ctrl, # = Win, ! = Alt, + = Shift. Пример: ^6, #n, ^+6.\n"
             "После изменения хоткея нажми «Применить», чтобы AHK перезапустился."
@@ -291,6 +364,7 @@ class MainWindow(QMainWindow):
         settings_layout.addLayout(row_theme)
         settings_layout.addLayout(row_shk)
         settings_layout.addLayout(row_screen)
+        settings_layout.addLayout(row_dirnum_float)
         settings_layout.addWidget(hint)
         settings_layout.addStretch(1)
 
@@ -677,6 +751,9 @@ class MainWindow(QMainWindow):
         self.tray: QSystemTrayIcon | None = None
         self._setup_tray()
 
+        self._set_dirnum_floating_enabled(self._load_dirnum_floating_enabled(), place=True)
+
+
         # =========================================================
         # DIR_NUM авто-обновление (если AHK переключил индекс)
         # =========================================================
@@ -702,6 +779,7 @@ class MainWindow(QMainWindow):
 
     def _on_dir_num_changed(self, text: str) -> None:
         self._dir_num = text
+        self._sync_dirnum_floating_widget(text)
 
     def _prez_clear_highlight(self) -> None:
         self._prez_selected = None
@@ -1289,6 +1367,126 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+    def _load_dirnum_floating_enabled(self) -> bool:
+        p = dirnum_floating_enabled_path()
+        if not p.exists():
+            return False
+        try:
+            raw = (p.read_text(encoding="utf-8") or "").strip().lower()
+            return raw in ("1", "true", "yes", "on")
+        except Exception:
+            return False
+
+    def _save_dirnum_floating_enabled(self, enabled: bool) -> None:
+        p = dirnum_floating_enabled_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("1" if enabled else "0", encoding="utf-8")
+
+    def _place_dirnum_floating_widget(self) -> None:
+        if not self.dirnum_floating_widget:
+            return
+        screen = QGuiApplication.primaryScreen()
+        if not screen:
+            return
+        geo = screen.availableGeometry()
+        w = self.dirnum_floating_widget
+        x = geo.right() - w.width() - 24
+        y = geo.top() + 24
+        w.move(max(0, x), max(0, y))
+
+    def _set_dirnum_floating_enabled(self, enabled: bool, *, place: bool = False) -> None:
+        if enabled:
+            if not self.dirnum_floating_widget:
+                self.dirnum_floating_widget = DirnumFloatingWidget(
+                    on_prev=self._dirnum_queue_prev,
+                    on_next=self._dirnum_queue_next,
+                    on_apply_manual=self._dirnum_queue_set_manual,
+                )
+            if place:
+                self._place_dirnum_floating_widget()
+            self.dirnum_floating_widget.show()
+            self.dirnum_floating_widget.raise_()
+            self.btn_dirnum_float_toggle.setText("Выключить")
+        else:
+            if self.dirnum_floating_widget:
+                self.dirnum_floating_widget.hide()
+            self.btn_dirnum_float_toggle.setText("Включить")
+
+    def _toggle_dirnum_floating_widget(self) -> None:
+        widget = getattr(self, "dirnum_floating_widget", None)
+        is_enabled = bool(widget and widget.isVisible())
+        new_enabled = not is_enabled
+        self._set_dirnum_floating_enabled(new_enabled, place=new_enabled)
+        self._save_dirnum_floating_enabled(new_enabled)
+
+    def _sync_dirnum_floating_widget(self, value: str) -> None:
+        widget = getattr(self, "dirnum_floating_widget", None)
+        if widget and widget.isVisible():
+            widget.set_dirnum(value)
+
+    def _dirnum_queue_prev(self) -> None:
+        try:
+            queue = load_queue() or []
+            idx = int(load_index() or 1)
+        except Exception:
+            queue = []
+            idx = 1
+
+        if not queue:
+            self._dirnum_queue_refresh(apply_to_input=False)
+            return
+
+        total = len(queue)
+        idx -= 1
+        if idx < 1:
+            idx = total
+
+        try:
+            from app.core.dirnum_queue import save_index
+            save_index(idx)
+        except Exception as e:
+            QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить индекс: {e}")
+            return
+
+        current = str(queue[idx - 1])
+        self.dir_num_edit.setText(current)
+        self._sync_dirnum_floating_widget(current)
+        self._dirnum_queue_refresh(apply_to_input=False)
+
+        try:
+            self._regen_templates_with_new_dirnum()
+        except Exception:
+            pass
+
+    def _dirnum_queue_set_manual(self, value: str) -> None:
+        v = (value or "").strip()
+        if not v:
+            return
+        if not v.isdigit():
+            QMessageBox.warning(self, "DIR_NUM", "DIR_NUM должен содержать только цифры.")
+            return
+
+        try:
+            queue = load_queue() or []
+        except Exception:
+            queue = []
+
+        if v in queue:
+            idx = queue.index(v) + 1
+            try:
+                from app.core.dirnum_queue import save_index
+                save_index(idx)
+            except Exception:
+                pass
+
+        self.dir_num_edit.setText(v)
+        self._sync_dirnum_floating_widget(v)
+        self._dirnum_queue_refresh(apply_to_input=False)
+        try:
+            self._regen_templates_with_new_dirnum(silent=True)
+        except Exception:
+            pass
+
     def save_screenshot_hotkey(self) -> None:
         try:
             self.screenshot_hotkey_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1336,6 +1534,7 @@ class MainWindow(QMainWindow):
 
             self.screenshot_hotkey_file = screenshot_hotkey_path()
             self.screenshots_enabled_file = screenshots_enabled_path()
+            self._set_dirnum_floating_enabled(self._load_dirnum_floating_enabled(), place=True)
 
             self.store.load()
             self.render()
@@ -1399,6 +1598,8 @@ class MainWindow(QMainWindow):
         self.activateWindow()
 
     def quit_app(self) -> None:
+        if self.dirnum_floating_widget:
+            self.dirnum_floating_widget.hide()
         if self.tray:
             self.tray.hide()
         QApplication.quit()
@@ -1406,6 +1607,9 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         if self.tray and self.tray.isVisible():
             self.hide()
+            if self.dirnum_floating_widget and self.dirnum_floating_widget.isVisible():
+                self.dirnum_floating_widget.show()
+                self.dirnum_floating_widget.raise_()
             try:
                 self.tray.showMessage(
                     "Worker Hotkeys",
@@ -1417,6 +1621,8 @@ class MainWindow(QMainWindow):
                 pass
             event.ignore()
             return
+        if self.dirnum_floating_widget:
+            self.dirnum_floating_widget.hide()
         super().closeEvent(event)
 
     # =========================================================
@@ -1825,10 +2031,12 @@ class MainWindow(QMainWindow):
 
         self.lbl_dirnum_queue_current.setText(f"Текущий DIR_NUM: {current or '—'}")
         self.btn_dirnum_queue_next.setEnabled(total > 0)
+        self._sync_dirnum_floating_widget(current or "")
 
         if apply_to_input and current:
             if not (self.dir_num_edit.text() or "").strip():
                 self.dir_num_edit.setText(current)
+
 
     def _dirnum_queue_save_from_text(self) -> None:
         """Парсит текст из поля, сохраняет очередь и подставляет первый DIR_NUM."""
@@ -1892,6 +2100,7 @@ class MainWindow(QMainWindow):
 
         current = str(queue[idx - 1])
         self.dir_num_edit.setText(current)
+        self._sync_dirnum_floating_widget(current)
 
         self._dirnum_queue_refresh(apply_to_input=False)
 
@@ -1926,6 +2135,7 @@ class MainWindow(QMainWindow):
             self._last_dirnum_seen = current
 
             self.dir_num_edit.setText(current)
+            self._sync_dirnum_floating_widget(current)
 
             try:
                 self._regen_templates_with_new_dirnum(silent=True)

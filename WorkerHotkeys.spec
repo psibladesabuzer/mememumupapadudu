@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['app\\main.py'],
+    ['C:\\Users\\qinqva\\PycharmProjects\\main_workable_app\\app\\main.py'],
     pathex=[],
-    binaries=[('AutoHotkeyUX.exe', '.')],
-    datas=[('assets', 'assets'), ('ahk', 'ahk'), ('app\\ui\\style.qss', 'app/ui'), ('app\\ui\\style_light.qss', 'app/ui')],
+    binaries=[],
+    datas=[('C:\\Users\\qinqva\\PycharmProjects\\main_workable_app\\assets', 'assets'), ('C:\\Users\\qinqva\\PycharmProjects\\main_workable_app\\ahk', 'ahk'), ('C:\\Users\\qinqva\\PycharmProjects\\main_workable_app\\assets', 'assets'), ('C:\\Users\\qinqva\\PycharmProjects\\main_workable_app\\ahk', 'ahk'), ('C:\\Users\\qinqva\\PycharmProjects\\main_workable_app\\app\\ui\\style.qss', 'app/ui'), ('C:\\Users\\qinqva\\PycharmProjects\\main_workable_app\\app\\ui\\style_light.qss', 'app/ui')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

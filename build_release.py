@@ -6,6 +6,7 @@ import sys
 ROOT = Path(__file__).parent
 SRC_SCRIPTS = ROOT / "Scripts"
 DIST_APP = ROOT / "dist" / "WorkerHotkeys"  # onedir
+ADD_DATA_SEP = ";" if sys.platform.startswith("win") else ":"
 
 def die(msg: str):
     print("ERROR:", msg)
@@ -23,9 +24,19 @@ def check_scripts(p: Path):
         die(f"Scripts есть, но .php не найдено: {p}")
     print(f"Scripts OK: {len(php)} php files")
 
+
+def check_required_file(path: Path, title: str):
+    if not path.exists() or not path.is_file():
+        die(f"{title} не найден: {path}")
+
+
+def add_data(src: Path, dst: str) -> str:
+    return f"{src}{ADD_DATA_SEP}{dst}"
+
 def main():
     # 1) check before build
     check_scripts(SRC_SCRIPTS)
+    check_required_file(ROOT / "AutoHotkeyUX.exe", "AutoHotkeyUX.exe")
 
     # 2) build
     run([
@@ -36,6 +47,10 @@ def main():
         "--onedir",
         "--add-data", f"{ROOT/'assets'};assets",
         "--add-data", f"{ROOT/'ahk'};ahk",
+        "--add-data", add_data(ROOT / "assets", "assets"),
+        "--add-data", add_data(ROOT / "ahk", "ahk"),
+        "--add-data", add_data(ROOT / "app" / "ui" / "style.qss", "app/ui"),
+        "--add-data", add_data(ROOT / "app" / "ui" / "style_light.qss", "app/ui"),
         str(ROOT / "app" / "main.py"),
     ])
 
