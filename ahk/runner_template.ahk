@@ -318,7 +318,7 @@ CopyFileToClipboardAndPaste(filePath) {
 
     if (dn != "") {
         txt := StrReplace(txt, "__DIR_NUM__", dn)
-
+    }
     if Trim(txt) = "" {
         ToolTip("Файл пустой: " filePath)
         SetTimer(() => ToolTip(), -1200)
@@ -925,6 +925,7 @@ GetZalivkaMode() {
 }
 
 HandleGeneratedHotkey(hkN, tplN, *) {
+    global CURRENT_GENERATED_TPLN
     mode := GetZalivkaMode()
 
     if (mode = "html" && tplN > 2) {
@@ -953,7 +954,7 @@ HandleGeneratedHotkey(hkN, tplN, *) {
 
     CURRENT_GENERATED_TPLN := tplN
 
-    if (CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php", tplN))
+    if (CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php"))
         ShowToastForGenerated(tplN)
 }
 
