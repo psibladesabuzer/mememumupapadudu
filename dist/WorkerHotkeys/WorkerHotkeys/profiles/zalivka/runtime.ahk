@@ -107,223 +107,28 @@ LogGeneratedHotkey(hkN, tplN) {
 
 ; ===== Generated templates: copy+paste HK1..HK4 =====
 GENERATED_DIR := APP_DIR "\generated_templates"
-Global CURRENT_GENERATED_TPLN := 1
-
-GetPickState() {
-    stateFile := GENERATED_DIR "\..\toast_state.txt"
-    pick := Map("type", "", "lang", "", "subtype", "")
-
-    try {
-        if FileExist(stateFile) {
-            txt := FileRead(stateFile, "UTF-8")
-            if RegExMatch(txt, "im)^type=(.*)$", &m1)
-                pick["type"] := Trim(m1[1])
-            if RegExMatch(txt, "im)^lang=(.*)$", &m2)
-                pick["lang"] := Trim(m2[1])
-            if RegExMatch(txt, "im)^subtype=(.*)$", &m3)
-                pick["subtype"] := Trim(m3[1])
-        }
-    } catch {
-    }
-
-    return pick
-}
-
-NormalizeUsedScope(pick) {
-    ; Приоритет mode.txt: гарантирует, что HTML/DB не перепутаются из-за устаревшего toast_state
-    mode := GetZalivkaMode()
-    pickType := (mode = "html") ? "HTML" : "DB"
-
-    pickSubtype := StrUpper(Trim(pick["subtype"]))
-    pickLang := StrUpper(Trim(pick["lang"]))
-
-    if (pickType = "HTML")
-        pickSubtype := ""
-    else if (pickSubtype = "")
-        pickSubtype := "UNKNOWN"
-
-    scope := pickType "/" pickLang
-    if (pickType = "DB")
-        scope := pickType "/" pickSubtype "/" pickLang
-
-    return Map("type", pickType, "subtype", pickSubtype, "lang", pickLang, "scope", scope)
-}
-
-UsedDirnumStorePath() {
-    pick := NormalizeUsedScope(Func("GetPickState").Call())
-    return UsedDirnumStorePathForScope(pick)
-}
-
-UsedDirnumStorePathForScope(pick) {
-    monthTag := FormatTime(, "yyyy-MM")
-    t := StrUpper(Trim(pick["type"]))
-    st := StrUpper(Trim(pick["subtype"]))
-    lang := StrUpper(Trim(pick["lang"]))
-
-    if (lang = "")
-        lang := "UNKNOWN"
-
-    if (t = "HTML") {
-        dirPath := APP_DIR "\used_dirnums\HTML\" lang
-        DirCreate(dirPath)
-        return dirPath "\used_" monthTag ".txt"
-    }
-
-    if (st = "")
-        st := "UNKNOWN"
-
-    dirPath := APP_DIR "\used_dirnums\DB\" st "\" lang
-    DirCreate(dirPath)
-    return dirPath "\used_" monthTag ".txt"
-}
-
-ReadUsedDirnumFile(filePath) {
-    if !FileExist(filePath)
-        return ""
-
-    try {
-        return FileRead(filePath, "UTF-8")
-    } catch {
-        return ""
-    }
-}
-
-IsDirnumPresentInText(txt, expectedScope, expectedDn) {
-    for rawLine in StrSplit(txt, "`n") {
-        line := Trim(StrReplace(rawLine, "`r"))
-        if (line = "" || SubStr(line, 1, 1) = "#")
-            continue
-
-        recordScope := ""
-        recordDn := ""
-        if !ParseUsedDirLine(line, &recordScope, &recordDn)
-            continue
-
-        if (recordScope = expectedScope && recordDn = expectedDn)
-            return true
-    }
-
-    return false
-}
-
-ParseUsedDirLine(line, &scopeOut := "", &dirNumOut := "") {
-    scopeOut := ""
-    dirNumOut := ""
-
-    parts := StrSplit(line, "`t")
-
-    ; Новый формат: SCOPE<TAB>DIR_NUM
-    if (parts.Length >= 2) {
-        scopeCandidate := StrUpper(Trim(parts[1]))
-        dirCandidate := Trim(parts[2])
-
-        if (scopeCandidate != "" && dirCandidate != "") {
-            if RegExMatch(scopeCandidate, "^HTML/[^/]+$") || RegExMatch(scopeCandidate, "^DB/[^/]+/[^/]+$") {
-                scopeOut := scopeCandidate
-                dirNumOut := dirCandidate
-                return true
-            }
-        }
-    }
-
-    ; Старый формат: TYPE<TAB>SUBTYPE<TAB>LANG<TAB>DIR_NUM
-    if (parts.Length >= 4) {
-        t := StrUpper(Trim(parts[1]))
-        st := StrUpper(Trim(parts[2]))
-        lang := StrUpper(Trim(parts[3]))
-        dn := Trim(parts[4])
-        if (t = "" || lang = "" || dn = "")
-            return false
-
-        if (t = "HTML")
-            scopeOut := t "/" lang
-        else
-            scopeOut := t "/" ((st = "") ? "UNKNOWN" : st) "/" lang
-
-        dirNumOut := dn
-        return true
-    }
-
-    return false
-}
-
-IsDirnumAlreadyUsed(dirNum, &scopeHint := "") {
-    dn := Trim(dirNum)
-    if (dn = "") {
-        scopeHint := ""
-        return false
-    }
-
-    pick := NormalizeUsedScope(GetPickState())
-    scopeHint := pick["scope"]
-
-    if (pick["lang"] = "")
-        return false
-
-    filePath := UsedDirnumStorePathForScope(pick)
-    txt := ReadUsedDirnumFile(filePath)
-    if (txt != "" && IsDirnumPresentInText(txt, pick["scope"], dn))
-        return true
-
-    ; backward compatibility: старый единый файл
-    legacyPath := APP_DIR "\lang_used_dir.txt"
-    legacyTxt := ReadUsedDirnumFile(legacyPath)
-    if (legacyTxt != "" && IsDirnumPresentInText(legacyTxt, pick["scope"], dn))
-        return true
-
-    return false
-}
-
-RememberUsedDirnum(dirNum) {
-    dn := Trim(dirNum)
-    if (dn = "")
-        return
-
-    pick := NormalizeUsedScope(GetPickState())
-    if (pick["lang"] = "")
-        return
-
-    filePath := UsedDirnumStorePathForScope(pick)
-    existing := ReadUsedDirnumFile(filePath)
-    if (existing != "" && IsDirnumPresentInText(existing, pick["scope"], dn))
-        return
-
-    line := pick["scope"] "`t" dn "`n"
-    FileAppend(line, filePath, "UTF-8")
-}
 
 CopyFileToClipboardAndPaste(filePath) {
-    if !FileExist(filePath) {
-        ToolTip("Нет файла: " filePath)
-        SetTimer(() => ToolTip(), -1200)
-        return false
-    }
-
-    txt := ""
     try {
+        if !FileExist(filePath) {
+            ToolTip("Нет файла: " filePath)
+            SetTimer(() => ToolTip(), -1200)
+            return
+        }
+
         txt := FileRead(filePath, "UTF-8")
-    } catch {
-        ; fallback: читаем в системной кодировке без нестандартных опций
-        txt := FileRead(filePath)
-    }
 
-    dn := ""
-    try {
         dn := GetCurrentDirNum()
-    } catch {
-        dn := ""
-    }
+        if (dn != "") {
+            txt := StrReplace(txt, "__DIR_NUM__", dn)
+        }
 
-    if (dn != "") {
-        txt := StrReplace(txt, "__DIR_NUM__", dn)
-    }
-    if Trim(txt) = "" {
-        ToolTip("Файл пустой: " filePath)
-        SetTimer(() => ToolTip(), -1200)
-        return false
-    }
+        if Trim(txt) = "" {
+            ToolTip("Файл пустой: " filePath)
+            SetTimer(() => ToolTip(), -1200)
+            return
+        }
 
-    try {
         A_Clipboard := ""
         A_Clipboard := txt
         ClipWait 1
@@ -331,15 +136,10 @@ CopyFileToClipboardAndPaste(filePath) {
         Sleep 50
         Send "^{Home}"
     } catch as e {
-        ToolTip("Ошибка HK: " e.Message)
+        ToolTip("Ошибка: " e.Message)
         SetTimer(() => ToolTip(), -1500)
-        return false
     }
-
-    ; DIR_NUM помечается использованным только после успешного скриншота (TakeScreenshot)
-    return true
 }
-
 ; ===== end generated templates =====
 
 
@@ -357,23 +157,8 @@ GetDirNumOverride() {
     return ""
 }
 
-GetDirNumQueueFile() {
-    mode := GetZalivkaMode()
-    if (mode = "html")
-        return APP_DIR "\dirnum_queue_html.txt"
-    return APP_DIR "\dirnum_queue.txt"
-}
-
-GetDirNumQueueIndexFile() {
-    mode := GetZalivkaMode()
-    if (mode = "html")
-        return APP_DIR "\dirnum_queue_index_html.txt"
-    return APP_DIR "\dirnum_queue_index.txt"
-}
-
 GetDirNumFromQueue() {
-    files := Map("queue", GetDirNumQueueFile(), "index", GetDirNumQueueIndexFile())
-    qf := files["queue"]
+    qf := APP_DIR "\dirnum_queue.txt"
     if !FileExist(qf)
         return ""
 
@@ -386,7 +171,7 @@ GetDirNumFromQueue() {
     if (nums.Length = 0)
         return ""
 
-    idxFile := GetDirNumQueueIndexFile()
+    idxFile := APP_DIR "\dirnum_queue_index.txt"
     idx := 1
 
     if FileExist(idxFile) {
@@ -409,8 +194,7 @@ GetCurrentDirNum() {
 }
 
 AdvanceDirNum(*) {
-    files := Map("queue", GetDirNumQueueFile(), "index", GetDirNumQueueIndexFile())
-    qf := files["queue"]
+    qf := APP_DIR "\dirnum_queue.txt"
     if !FileExist(qf)
         return
 
@@ -423,8 +207,7 @@ AdvanceDirNum(*) {
     if (nums.Length = 0)
         return
 
-
-    idxFile := files["index"]
+    idxFile := APP_DIR "\dirnum_queue_index.txt"
     idx := 1
 
     if FileExist(idxFile) {
@@ -757,14 +540,10 @@ TakeScreenshot() {
 
     try {
         CaptureVirtualScreenToPng(shotPath)
-        dn := GetCurrentDirNum()
-        if (dn != "")
-            RememberUsedDirnum(dn)
         LogWrite("HOTKEY " ScreenshotHotkey " SCREENSHOT " shotPath)
     } catch {
-        return
+        ; ничего не делаем
     }
-    ShowScreenshotToast("Скриншот сделан")
 }
 
 RegisterScreenshotHotkey() {
@@ -922,7 +701,6 @@ GetZalivkaMode() {
 }
 
 HandleGeneratedHotkey(hkN, tplN, *) {
-    global CURRENT_GENERATED_TPLN
     mode := GetZalivkaMode()
 
     if (mode = "html" && tplN > 2) {
@@ -936,23 +714,8 @@ HandleGeneratedHotkey(hkN, tplN, *) {
 
     LogGeneratedHotkey(hkN, tplN)
 
-    if (tplN = 1) {
-        scopeHint := ""
-        dn := GetCurrentDirNum()
-        if (dn != "" && IsDirnumAlreadyUsed(dn, &scopeHint)) {
-            MsgBox(
-                "DIR_NUM уже использовался для HK1:`n`n" scopeHint "/" dn "`n`nВыберите следующий DIR_NUM и повторите.",
-                "Повторный DIR_NUM",
-                "Icon!"
-            )
-            return
-        }
-    }
-
-    CURRENT_GENERATED_TPLN := tplN
-
-    if (CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php"))
-        ShowToastForGenerated(tplN)
+    CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php")
+    ShowToastForGenerated(tplN)
 }
 
 ShowInsertToast(text, colorHex := "00FF00", ms := 2000) {
@@ -991,43 +754,6 @@ HideToastGui(gui) {
     gui.Hide()
 }
 
-ShowScreenshotToast(text := "Скриншот сделан", ms := 2000) {
-    try {
-        toastGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
-        toastGui.BackColor := "0x111827"
-        toastGui.MarginX := 22
-        toastGui.MarginY := 12
-
-        toastGui.SetFont("s14 Bold", "Segoe UI")
-        toastGui.AddText("c0x2e7d32 Center", text)
-
-        toastGui.Show("AutoSize NoActivate")
-
-        WinGetPos(&x, &y, &w, &h, toastGui.Hwnd)
-
-        ; rounded corners like status toast
-        radius := 16
-        rgn := DllCall("gdi32\CreateRoundRectRgn"
-            , "int", 0, "int", 0, "int", w + 1, "int", h + 1
-            , "int", radius, "int", radius
-            , "ptr")
-        DllCall("user32\SetWindowRgn", "ptr", toastGui.Hwnd, "ptr", rgn, "int", true)
-
-        try WinSetTransparent(245, toastGui.Hwnd)
-
-        screenW := A_ScreenWidth
-        screenH := A_ScreenHeight
-        posX := (screenW - w) // 2
-        posY := screenH - h - 60
-
-        toastGui.Show("x" posX " y" posY " NoActivate")
-        SetTimer(() => toastGui.Destroy(), -ms)
-    } catch {
-        ; fallback, чтобы пользователь всё равно увидел уведомление
-        ToolTip(text, (A_ScreenWidth // 2) - 120, A_ScreenHeight - 40)
-        SetTimer(() => ToolTip(), -ms)
-    }
-}
 
 RegisterGeneratedHotkeys() {
     mode := GetZalivkaMode()

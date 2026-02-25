@@ -83,13 +83,25 @@ def _portable_base_dir() -> Path:
 
 
 def scripts_dir() -> Path:
-    portable = _portable_base_dir() / "Scripts"
-    if portable.exists() and portable.is_dir():
-        return portable
+    candidates = [
+        # Приоритет: профильная папка (актуальная для HK1..HK4 и выбранного профиля)
+        profile_dir() / "Scripts",
+        # Портативный вариант рядом с проектом/exe
+        _portable_base_dir() / "Scripts",
+        # Legacy fallback: общий AppData каталог
+        app_data_dir() / "Scripts",
+    ]
 
-    p = app_data_dir() / "Scripts"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
+    for p in candidates:
+        if not (p.exists() and p.is_dir()):
+            continue
+        if (p / "DB").exists() or (p / "HTML").exists():
+            return p
+
+    # Если структуры ещё нет — создаём в профильной папке по умолчанию.
+    default_dir = profile_dir() / "Scripts"
+    default_dir.mkdir(parents=True, exist_ok=True)
+    return default_dir
 
 
 # ====== ПУТИ ВНУТРИ ПРОФИЛЯ ======

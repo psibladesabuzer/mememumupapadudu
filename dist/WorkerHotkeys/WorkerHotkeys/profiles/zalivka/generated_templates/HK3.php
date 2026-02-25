@@ -14,9 +14,9 @@ $actions = array (
 //   'clean' => 1,
 //   'homeLinks' => 1,
 
-  //'sitemap' => 1,
+'sitemap' => 1,
   //'sitemapSecondMethod' => 1,
-'rollback' => 1,
+  //'rollback' => 1,
   //'sendPostsFromDb' => 1,
   //'viewSettings' => 1,
   //'viewAllAuthors' => 1,

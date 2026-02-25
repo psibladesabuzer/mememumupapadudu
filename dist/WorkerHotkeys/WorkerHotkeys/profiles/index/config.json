@@ -64,13 +64,7 @@
       "name": "Переименовывание сайтмепа для RC PANEL",
       "combo": "^b",
       "action": "ahk_raw",
-      "payload": "oldClip := ClipboardAll()\n\ntext := \"\n(\n$document_root = $_SERVER['DOCUMENT_ROOT'];\n\n$old_name = $document_root . '/sitemap1714.xml';\n$new_name = $document_root . '/sitemap11.xml';\n\nif (!file_exists($old_name)) {\n    echo \"Исходный файл sitemap не найден\";\n    exit;\n}\n\nif (file_exists($new_name)) {\n    echo \"Файл sitemap уже существует. Переименование отменено.\";\n    exit;\n}\n\nif (rename($old_name, $new_name)) {\n    echo \"Файл успешно переименован в sitemap11.xml\";\n} else {\n    echo \"Ошибка при переименовании файла\";\n}\n)\"\n\nA_Clipboard := text\nClipWait 1\nSend \"^v\"\nSleep 120\nA_Clipboard := oldClip\n"
-    },
-    {
-      "name": "plugin-install",
-      "combo": "^XButton2",
-      "action": "ahk_raw",
-      "payload": "Send(\"/plugin-install.php?tab=upload\")\nSleep(100)\nSend(\"{Enter}\")"
+      "payload": "oldClip := ClipboardAll()\n\ntext := \"\n(\n$document_root = $_SERVER['DOCUMENT_ROOT'];\n\n$old_name = $document_root . '/sitemap1803.xml';\n$new_name = $document_root . '/sitemap11.xml';\n\nif (file_exists($old_name)) {\n    if (rename($old_name, $new_name)) {\n        echo \"Файл успешно переименован в sitemap11.xml\";\n    } else {\n        echo \"Ошибка при переименовании файла\";\n    }\n} else {\n    echo \"Файл sitemap.xml не найден\";\n}\n)\"\n\nA_Clipboard := text\nClipWait 1\nSend \"^v\"\nSleep 120\nA_Clipboard := oldClip\n"
     }
   ]
 }
