@@ -542,8 +542,9 @@ TakeScreenshot() {
         CaptureVirtualScreenToPng(shotPath)
         LogWrite("HOTKEY " ScreenshotHotkey " SCREENSHOT " shotPath)
     } catch {
-        ; ничего не делаем
+        return
     }
+    ShowScreenshotToast("Скриншот сделан")
 }
 
 RegisterScreenshotHotkey() {
@@ -754,6 +755,43 @@ HideToastGui(gui) {
     gui.Hide()
 }
 
+ShowScreenshotToast(text := "Скриншот сделан", ms := 2000) {
+    try {
+        toastGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+        toastGui.BackColor := "0x111827"
+        toastGui.MarginX := 22
+        toastGui.MarginY := 12
+
+        toastGui.SetFont("s14 Bold", "Segoe UI")
+        toastGui.AddText("c0x2e7d32 Center", text)
+
+        toastGui.Show("AutoSize NoActivate")
+
+        WinGetPos(&x, &y, &w, &h, toastGui.Hwnd)
+
+        ; rounded corners like status toast
+        radius := 16
+        rgn := DllCall("gdi32\CreateRoundRectRgn"
+            , "int", 0, "int", 0, "int", w + 1, "int", h + 1
+            , "int", radius, "int", radius
+            , "ptr")
+        DllCall("user32\SetWindowRgn", "ptr", toastGui.Hwnd, "ptr", rgn, "int", true)
+
+        try WinSetTransparent(245, toastGui.Hwnd)
+
+        screenW := A_ScreenWidth
+        screenH := A_ScreenHeight
+        posX := (screenW - w) // 2
+        posY := screenH - h - 60
+
+        toastGui.Show("x" posX " y" posY " NoActivate")
+        SetTimer(() => toastGui.Destroy(), -ms)
+    } catch {
+        ; fallback, чтобы пользователь всё равно увидел уведомление
+        ToolTip(text, (A_ScreenWidth // 2) - 120, A_ScreenHeight - 40)
+        SetTimer(() => ToolTip(), -ms)
+    }
+}
 
 RegisterGeneratedHotkeys() {
     mode := GetZalivkaMode()

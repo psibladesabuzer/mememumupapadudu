@@ -9,6 +9,7 @@ from app.core.dirnum_queue import parse_dirnums_from_lines, save_queue, load_que
 
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -41,6 +42,7 @@ from app.core.paths import scripts_status
 from app.core.templates import ensure_index_template
 from app.core.paths import (
     dirnum_floating_enabled_path,
+    homelinks_enabled_path,
     dirnum_next_hotkey_path,
     runtime_ahk_path,
     rename_sitemap_template_path,
@@ -412,17 +414,29 @@ class MainWindow(QMainWindow):
         prez_layout.addWidget(self.btn_perm_console)
 
         # --- DIR_NUM queue (bulk paste from Excel) ---
-        self.dirnum_bulk = QPlainTextEdit()
-        self.dirnum_bulk.setPlaceholderText(
-            "Вставь сюда пути архивов (все), пример: CSN/OLDSINGLE/EN/1"
+        self.dirnum_bulk_db = QPlainTextEdit()
+        self.dirnum_bulk_db.setPlaceholderText(
+            "Вставь сюда пути архивов DB/ZALIV и DB/DOZALIV, пример: CSN/OLDSINGLE/EN/1"
         )
-        self.dirnum_bulk.setFixedHeight(120)
+        self.dirnum_bulk_db.setFixedHeight(92)
 
-        self.lbl_dirnum_queue_info = QLabel("Очередь DIR_NUM: 0")
-        self.lbl_dirnum_queue_info.setStyleSheet("color: rgba(226,232,240,0.8);")
+        self.dirnum_bulk_html = QPlainTextEdit()
+        self.dirnum_bulk_html.setPlaceholderText(
+            "Вставь сюда пути HTML архивов, пример: CSN/OLDSINGLE/EN/1"
+        )
+        self.dirnum_bulk_html.setFixedHeight(92)
 
-        self.lbl_dirnum_queue_current = QLabel("Текущий DIR_NUM: —")
-        self.lbl_dirnum_queue_current.setStyleSheet("color: rgba(226,232,240,0.9); font-weight: 700;")
+        self.lbl_dirnum_queue_info_db = QLabel("Очередь DIR_NUM DB: 0")
+        self.lbl_dirnum_queue_info_db.setStyleSheet("color: rgba(226,232,240,0.8);")
+
+        self.lbl_dirnum_queue_current_db = QLabel("Текущий DIR_NUM DB: —")
+        self.lbl_dirnum_queue_current_db.setStyleSheet("color: rgba(226,232,240,0.9); font-weight: 700;")
+
+        self.lbl_dirnum_queue_info_html = QLabel("Очередь DIR_NUM HTML: 0")
+        self.lbl_dirnum_queue_info_html.setStyleSheet("color: rgba(226,232,240,0.8);")
+
+        self.lbl_dirnum_queue_current_html = QLabel("Текущий DIR_NUM HTML: —")
+        self.lbl_dirnum_queue_current_html.setStyleSheet("color: rgba(226,232,240,0.9); font-weight: 700;")
 
         self.btn_dirnum_queue_apply = QPushButton("Сохранить")
         self.btn_dirnum_queue_next = QPushButton("Следующий")
@@ -433,9 +447,14 @@ class MainWindow(QMainWindow):
         dirnum_btns.addWidget(self.btn_dirnum_queue_next, 1)
 
         prez_layout.addSpacing(8)
-        prez_layout.addWidget(self.dirnum_bulk)
-        prez_layout.addWidget(self.lbl_dirnum_queue_info)
-        prez_layout.addWidget(self.lbl_dirnum_queue_current)
+        prez_layout.addWidget(self.dirnum_bulk_db)
+        prez_layout.addWidget(self.lbl_dirnum_queue_info_db)
+        prez_layout.addWidget(self.lbl_dirnum_queue_current_db)
+
+        prez_layout.addWidget(self.dirnum_bulk_html)
+        prez_layout.addWidget(self.lbl_dirnum_queue_info_html)
+        prez_layout.addWidget(self.lbl_dirnum_queue_current_html)
+
         prez_layout.addLayout(dirnum_btns)
 
         prez_layout.addStretch(1)
@@ -475,7 +494,18 @@ class MainWindow(QMainWindow):
         self.edt_lang_search = QLineEdit()
         self.edt_lang_search.setPlaceholderText("например FR или EN-FR")
         self.edt_lang_search.setFixedWidth(190)
-        #self.edt_lang_search.textChanged.connect(self._on_lang_search_changed)
+        self.edt_lang_search.textChanged.connect(self._on_lang_search_changed)
+
+        self.chk_homelinks = QCheckBox("Homelinks")
+        self.chk_homelinks.setStyleSheet(
+            "QCheckBox { font-weight: 800; color: #ff7a7a; padding-left: 6px; }"
+            "QCheckBox::indicator { width: 20px; height: 20px; border-radius: 4px; "
+            "border: 2px solid #ff7a7a; background: rgba(15, 23, 42, 0.9); }"
+            "QCheckBox::indicator:checked { border: 2px solid #22c55e; background: #16a34a; }"
+            "QCheckBox::indicator:hover { border: 2px solid #fda4af; }"
+        )
+        self.chk_homelinks.setChecked(self._load_homelinks_enabled())
+        self.chk_homelinks.toggled.connect(self._on_homelinks_toggled)
 
         self.lbl_lang_search.setVisible(True)
         self.edt_lang_search.setVisible(True)
@@ -522,6 +552,8 @@ class MainWindow(QMainWindow):
         row_search.setSpacing(8)
         row_search.addWidget(self.lbl_lang_search)
         row_search.addWidget(self.edt_lang_search)
+        row_search.addSpacing(8)
+        row_search.addWidget(self.chk_homelinks)
 
         row_dirnum = QHBoxLayout()
         row_dirnum.addWidget(self.lbl_dirnum_next_hotkey)
@@ -1257,11 +1289,13 @@ class MainWindow(QMainWindow):
                 r += 1
 
     def _rebuild_lang_buttons(self) -> None:
-        # Перерисовываем только активные панели
-        if getattr(self, "_db_active", False):
-            self._rebuild_lang_buttons_db()
-        if getattr(self, "_html_active", False):
-            self._rebuild_lang_buttons_html()
+        # Поиск работает сразу по DB и HTML, поэтому пересобираем обе панели.
+        self._rebuild_lang_buttons_db()
+        self._rebuild_lang_buttons_html()
+
+    def _on_lang_search_changed(self, text: str) -> None:
+        self._lang_filter = (text or "").strip()
+        self._rebuild_lang_buttons()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
@@ -1367,6 +1401,31 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+    def _load_homelinks_enabled(self) -> bool:
+        p = homelinks_enabled_path()
+        if not p.exists():
+            return False
+        try:
+            raw = (p.read_text(encoding="utf-8") or "").strip().lower()
+            return raw in ("1", "true", "yes", "on")
+        except Exception:
+            return False
+
+    def _save_homelinks_enabled(self, enabled: bool) -> None:
+        p = homelinks_enabled_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("1" if enabled else "0", encoding="utf-8")
+
+    def _on_homelinks_toggled(self, checked: bool) -> None:
+        self._save_homelinks_enabled(bool(checked))
+
+        # если шаблон уже подтверждён — пересобираем HK1..HK4 сразу, чтобы AHK взял новое состояние
+        if self._pick_lang_stage == 2 and getattr(self, "_last_template_src", None):
+            try:
+                self._generate_lang_templates()
+            except Exception:
+                pass
+
     def _load_dirnum_floating_enabled(self) -> bool:
         p = dirnum_floating_enabled_path()
         if not p.exists():
@@ -1425,9 +1484,10 @@ class MainWindow(QMainWindow):
             widget.set_dirnum(value)
 
     def _dirnum_queue_prev(self) -> None:
+        kind = self._active_queue_kind()
         try:
-            queue = load_queue() or []
-            idx = int(load_index() or 1)
+            queue = load_queue(kind) or []
+            idx = int(load_index(kind) or 1)
         except Exception:
             queue = []
             idx = 1
@@ -1443,7 +1503,7 @@ class MainWindow(QMainWindow):
 
         try:
             from app.core.dirnum_queue import save_index
-            save_index(idx)
+            save_index(idx, kind)
         except Exception as e:
             QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить индекс: {e}")
             return
@@ -1466,8 +1526,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "DIR_NUM", "DIR_NUM должен содержать только цифры.")
             return
 
+        kind = self._active_queue_kind()
         try:
-            queue = load_queue() or []
+            queue = load_queue(kind) or []
         except Exception:
             queue = []
 
@@ -1475,7 +1536,7 @@ class MainWindow(QMainWindow):
             idx = queue.index(v) + 1
             try:
                 from app.core.dirnum_queue import save_index
-                save_index(idx)
+                save_index(idx, kind)
             except Exception:
                 pass
 
@@ -1921,7 +1982,7 @@ class MainWindow(QMainWindow):
             return
 
         out_dir = generated_templates_dir()
-        write_variants(src, out_dir, dir_num)
+        write_variants(src, out_dir, dir_num, hk1_homelinks_enabled=self.chk_homelinks.isChecked())
         self._write_runtime_pick_state()
 
         # HTML uses only HK1..HK2; DB uses HK1..HK4
@@ -1946,8 +2007,9 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "DIR_NUM", f"Исходный шаблон не найден:\n{src}")
                 return
 
-            queue = load_queue() or []
-            idx = int(load_index() or 1)
+            kind = self._active_queue_kind()
+            queue = load_queue(kind) or []
+            idx = int(load_index(kind) or 1)
 
             if not queue:
                 QMessageBox.warning(self, "DIR_NUM", "Очередь DIR_NUM пуста.")
@@ -1973,7 +2035,7 @@ class MainWindow(QMainWindow):
                 if p.exists():
                     p.unlink()
 
-            write_variants(src, out_dir, dir_num)
+            write_variants(src, out_dir, dir_num, hk1_homelinks_enabled=self.chk_homelinks.isChecked())
             self._write_runtime_pick_state()
 
             # визуальный фидбек
@@ -2008,75 +2070,106 @@ class MainWindow(QMainWindow):
             self.btn_dirnum_save.setEnabled(ok)
 
     # ================= DIR_NUM очередь (bulk из Excel) =================
+    def _active_queue_kind(self) -> str:
+        return "html" if getattr(self, "_pick_type", None) == "HTML" else "db"
+
     def _dirnum_queue_refresh(self, *, apply_to_input: bool = False) -> None:
         if not hasattr(self, "dir_num_edit"):
             return
-        try:
-            queue = load_queue() or []
-            idx = int(load_index() or 1)
-        except Exception:
-            queue = []
-            idx = 1
-
-        total = len(queue)
-        self.lbl_dirnum_queue_info.setText(f"Очередь DIR_NUM: {total}")
-
-        current = None
-        if total:
-            if idx < 1:
+        def _current(kind: str) -> tuple[list[str], int, str | None]:
+            try:
+                queue = load_queue(kind) or []
+                idx = int(load_index(kind) or 1)
+            except Exception:
+                queue = []
                 idx = 1
-            if idx > total:
-                idx = 1
-            current = str(queue[idx - 1])
 
-        self.lbl_dirnum_queue_current.setText(f"Текущий DIR_NUM: {current or '—'}")
-        self.btn_dirnum_queue_next.setEnabled(total > 0)
-        self._sync_dirnum_floating_widget(current or "")
+            total = len(queue)
+            if total:
+                idx = max(1, min(idx, total))
+                return queue, idx, str(queue[idx - 1])
+            return queue, idx, None
 
-        if apply_to_input and current:
+        queue_db, _, current_db = _current("db")
+        queue_html, _, current_html = _current("html")
+
+        self.lbl_dirnum_queue_info_db.setText(f"Очередь DIR_NUM DB: {len(queue_db)}")
+        self.lbl_dirnum_queue_current_db.setText(f"Текущий DIR_NUM DB: {current_db or '—'}")
+
+        self.lbl_dirnum_queue_info_html.setText(f"Очередь DIR_NUM HTML: {len(queue_html)}")
+        self.lbl_dirnum_queue_current_html.setText(f"Текущий DIR_NUM HTML: {current_html or '—'}")
+
+        kind = self._active_queue_kind()
+        active_current = current_html if kind == "html" else current_db
+        active_total = len(queue_html) if kind == "html" else len(queue_db)
+
+        self.btn_dirnum_queue_next.setEnabled(active_total > 0)
+        self._sync_dirnum_floating_widget(active_current or "")
+
+        if apply_to_input and active_current:
             if not (self.dir_num_edit.text() or "").strip():
-                self.dir_num_edit.setText(current)
+                self.dir_num_edit.setText(active_current)
 
 
     def _dirnum_queue_save_from_text(self) -> None:
-        """Парсит текст из поля, сохраняет очередь и подставляет первый DIR_NUM."""
-        raw = self.dirnum_bulk.toPlainText() or ""
-        lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
-        if not lines:
-            QMessageBox.information(self, "DIR_NUM", "Вставь сюда пути архивов (все), пример: CSN/OLDSINGLE/EN/1.")
-            return
+        """Парсит текст из двух полей очереди (DB и HTML)."""
+        raw_db = self.dirnum_bulk_db.toPlainText() or ""
+        raw_html = self.dirnum_bulk_html.toPlainText() or ""
 
-        try:
-            queue = parse_dirnums_from_lines(raw) or []
-        except Exception as e:
-            QMessageBox.critical(self, "DIR_NUM", f"Ошибка разбора строк: {e}")
-            return
+        has_db = bool([ln.strip() for ln in raw_db.splitlines() if ln.strip()])
+        has_html = bool([ln.strip() for ln in raw_html.splitlines() if ln.strip()])
 
-        if not queue:
-            QMessageBox.warning(self, "DIR_NUM", "Не удалось извлечь ни одного DIR_NUM из вставленных строк.")
-            return
+        if not has_db and not has_html:
+            QMessageBox.information(
+                self,
+                "DIR_NUM",
+                "Заполни хотя бы одно поле: DB/ZALIV+DOZALIV или HTML архивы.",
+            )
 
         # сохраняем очередь (модуль сам хранит в профиле)
-        try:
-            save_queue(queue)
-        except Exception as e:
-            QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить очередь: {e}")
+        saved_any = False
+        for kind, raw, has_lines in (("db", raw_db, has_db), ("html", raw_html, has_html)):
+            if not has_lines:
+                continue
+            try:
+                queue = parse_dirnums_from_lines(raw) or []
+            except Exception as e:
+                QMessageBox.critical(self, "DIR_NUM", f"Ошибка разбора строк ({kind.upper()}): {e}")
+                return
+
+            if not queue:
+                QMessageBox.warning(self, "DIR_NUM", f"Не удалось извлечь ни одного DIR_NUM для {kind.upper()}.")
+                return
+
+            try:
+                save_queue(queue, kind)
+                from app.core.dirnum_queue import save_index
+                save_index(1, kind)
+            except Exception as e:
+                QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить очередь {kind.upper()}: {e}")
+                return
+            saved_any = True
+
+        if not saved_any:
             return
 
         # подставляем первый
-        self.dir_num_edit.setText(str(queue[0]))
+        kind = self._active_queue_kind()
+        queue_active = load_queue(kind) or []
+        if queue_active:
+            self.dir_num_edit.setText(str(queue_active[0]))
         self._dirnum_queue_refresh(apply_to_input=True)
 
-        # пересобираем HK под новый DIR_NUM из очереди (если язык уже подтверждён)
         try:
             self._regen_templates_with_new_dirnum()
         except Exception:
             pass
 
     def _dirnum_queue_next(self) -> None:
+        kind = self._active_queue_kind()
         try:
-            queue = load_queue() or []
-            idx = int(load_index() or 1)
+            queue = load_queue(kind) or []
+            idx = int(load_index(kind) or 1)
         except Exception:
             queue = []
             idx = 1
@@ -2093,7 +2186,7 @@ class MainWindow(QMainWindow):
 
         try:
             from app.core.dirnum_queue import save_index
-            save_index(idx)
+            save_index(idx, kind)
         except Exception as e:
             QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить индекс: {e}")
             return
@@ -2110,9 +2203,10 @@ class MainWindow(QMainWindow):
             pass
 
     def _poll_dirnum_and_regen_if_changed(self) -> None:
+        kind = self._active_queue_kind()
         try:
-            queue = load_queue() or []
-            idx = int(load_index() or 1)
+            queue = load_queue(kind) or []
+            idx = int(load_index(kind) or 1)
         except Exception:
             return
 
@@ -2126,9 +2220,9 @@ class MainWindow(QMainWindow):
 
         current = str(queue[idx - 1])
 
-        # UI refresh
-        self.lbl_dirnum_queue_current.setText(f"Текущий DIR_NUM: {current}")
-        self.lbl_dirnum_queue_info.setText(f"Очередь DIR_NUM: {len(queue)}")
+        self._dirnum_queue_refresh(apply_to_input=False)
+        if self._last_dirnum_seen != f"{kind}:{current}":
+            self._last_dirnum_seen = f"{kind}:{current}"
 
         # If changed -> regen templates
         if self._last_dirnum_seen != current:
@@ -2143,27 +2237,21 @@ class MainWindow(QMainWindow):
                 pass
 
 
-def _on_lang_search_changed(self, text: str) -> None:
-    self._lang_filter = (text or "").strip()
-    self._rebuild_lang_buttons()
+    def _save_current_picker_state(self) -> None:
+        if self._pick_type == "DB":
+            self._state_db["subtype"] = self._pick_subtype
+            self._state_db["lang"] = self._pick_lang
+            self._state_db["stage"] = self._pick_lang_stage
+        elif self._pick_type == "HTML":
+            self._state_html["lang"] = self._pick_lang
+            self._state_html["stage"] = self._pick_lang_stage
 
-
-def _save_current_picker_state(self) -> None:
-    if self._pick_type == "DB":
-        self._state_db["subtype"] = self._pick_subtype
-        self._state_db["lang"] = self._pick_lang
-        self._state_db["stage"] = self._pick_lang_stage
-    elif self._pick_type == "HTML":
-        self._state_html["lang"] = self._pick_lang
-        self._state_html["stage"] = self._pick_lang_stage
-
-
-def _load_picker_state(self, t: str) -> None:
-    if t == "DB":
-        self._pick_subtype = self._state_db.get("subtype")
-        self._pick_lang = self._state_db.get("lang")
-        self._pick_lang_stage = int(self._state_db.get("stage", 0) or 0)
-    else:  # HTML
-        self._pick_subtype = None
-        self._pick_lang = self._state_html.get("lang")
-        self._pick_lang_stage = int(self._state_html.get("stage", 0) or 0)
+    def _load_picker_state(self, t: str) -> None:
+        if t == "DB":
+            self._pick_subtype = self._state_db.get("subtype")
+            self._pick_lang = self._state_db.get("lang")
+            self._pick_lang_stage = int(self._state_db.get("stage", 0) or 0)
+        else:  # HTML
+            self._pick_subtype = None
+            self._pick_lang = self._state_html.get("lang")
+            self._pick_lang_stage = int(self._state_html.get("stage", 0) or 0)

@@ -49,31 +49,17 @@ def _replace_html_url_dirnum_in_line(line: str, dir_num: str) -> str:
     """
     HTML: в строке $url = '.../SOME-PREFIX-BENL-1/'; заменить число после последнего '-'
     (перед '/...') на dir_num.
-
-    Работает аккуратно:
-    - сохраняет кавычки, пробелы и ';'
-    - не ломает, если формат другой (вернёт исходную строку)
     """
     dn = (dir_num or "").strip()
     if not dn:
         return line
 
-    # Быстрый отсев: строка должна начинаться с $url (после пробелов)
     if not line.lstrip().startswith("$url"):
         return line
 
-    # Меняем число в "последнем сегменте":
-    # ...-<digits>/<возможные кавычки/пробелы/; в конце>
-    #
-    # Группа 1: всё до числа включая последний '-'
-    # Группа 2: само число
-    # Группа 3: остаток начиная с / и дальше (/', /";, /' ; ...)
     pattern = r"(.*-)(\d+)(/\s*['\"]?\s*;?\s*)$"
-    # Если в конце есть ещё символы после / (например /foo'), то этот паттерн не сработает.
-    # Поэтому сделаем более общий вариант: "/" + любые символы до конца:
     pattern2 = r"(.*-)(\d+)(/.*)$"
 
-    # Сначала пробуем строгий (когда /' ; в конце), потом общий.
     new_line, n = re.subn(pattern, r"\g<1>" + dn + r"\g<3>", line, count=1)
     if n:
         return new_line
@@ -88,27 +74,17 @@ def _replace_html_url_dirnum_in_line(line: str, dir_num: str) -> str:
 def _apply_html_dirnum_all(variants: list[list[str]], dir_num: str) -> None:
     """
     HTML: проверяем строки 5-7 (1-based) -> индексы 4..6.
-    Если строка начинается с $url, меняем число в последнем сегменте пути.
-    Применяем ко всем вариантам (HK1..HK4), чтобы DIR_NUM был одинаковый.
     """
     dn = (dir_num or "").strip()
     if not dn:
         return
 
-    idxs = [4, 5, 6]  # строки 5,6,7
+    idxs = [4, 5, 6]
     for v in variants:
         for i in idxs:
             if 0 <= i < len(v):
                 v[i] = _replace_html_url_dirnum_in_line(v[i], dn)
 
-def _set_force_delete(text: str, value: str) -> str:
-    v = (value or "").strip()
-    if v not in {"0", "1"}:
-        return text
-
-    pattern = r"(define\s*\(\s*['\"]FORCE_DELETE['\"]\s*,\s*)([01])(\s*\)\s*;)"
-    return re.sub(pattern, r"\g<1>" + v + r"\g<3>", text, count=1)
-
 
 def _set_force_delete(text: str, value: str) -> str:
     v = (value or "").strip()
@@ -118,9 +94,60 @@ def _set_force_delete(text: str, value: str) -> str:
     pattern = r"(define\s*\(\s*['\"]FORCE_DELETE['\"]\s*,\s*)([01])(\s*\)\s*;)"
     return re.sub(pattern, r"\g<1>" + v + r"\g<3>", text, count=1)
 
+def _set_homelinks_line(text: str, *, enabled: bool) -> str:
+    """
+    Включает/выключает строку вида:
+      'homeLinks' => 1,
+    При enabled=False строка комментируется через //.
+    """
+    pattern = r"^(?P<indent>\s*)(?://\s*)?'homeLinks'\s*=>\s*1,\s*$"
+
+    def repl(match: re.Match[str]) -> str:
+        indent = match.group("indent") or ""
+        core = "'homeLinks' => 1,"
+        if enabled:
+            return f"{indent}{core}"
+        return f"{indent}// {core}"
+
+    updated = re.sub(pattern, repl, text, count=1, flags=re.MULTILINE)
+    return _ensure_blank_line_after_homelinks(updated)
+
+    return re.sub(pattern, repl, text, count=1, flags=re.MULTILINE)
 
 
-def build_variants(source_text: str, dir_num: str, *, mode: str = "db") -> dict[int, str]:
+
+def _ensure_blank_line_after_homelinks(text: str) -> str:
+    """
+    Гарантирует ровно одну пустую строку сразу после строки homeLinks.
+    """
+    lines = text.splitlines(keepends=True)
+    pattern = re.compile(r"^\s*(?://\s*)?'homeLinks'\s*=>\s*1,\s*$")
+
+    for i, line in enumerate(lines):
+        if not pattern.match(line.rstrip("\r\n")):
+            continue
+
+        # Удаляем все пустые строки сразу после homeLinks
+        j = i + 1
+        while j < len(lines) and not lines[j].strip():
+            del lines[j]
+
+        newline = "\n"
+        if line.endswith("\r\n"):
+            newline = "\r\n"
+        lines.insert(i + 1, newline)
+        break
+
+    return "".join(lines)
+
+
+def build_variants(
+    source_text: str,
+    dir_num: str,
+    *,
+    mode: str = "db",
+    hk1_homelinks_enabled: bool = False,
+) -> dict[int, str]:
     """
     mode: "db" | "html"
     """
@@ -133,8 +160,8 @@ def build_variants(source_text: str, dir_num: str, *, mode: str = "db") -> dict[
 
     # 1) DIR_NUM apply (different rules for DB / HTML)
     if mode == "html":
-        _apply_html_dirnum_all([v1], dir_num)  # только v1!
-        t1 = "".join(v1)
+        _apply_html_dirnum_all([v1], dir_num)
+        t1 = _set_homelinks_line("".join(v1), enabled=False)
         t2 = _set_force_delete(t1, "1")
         return {1: t1, 2: t2}
     else:
@@ -152,19 +179,36 @@ def build_variants(source_text: str, dir_num: str, *, mode: str = "db") -> dict[
     _comment_range(v4, 9, 11)
     _comment_range(v4, 13, 15)
 
+    hk1 = _set_homelinks_line("".join(v1), enabled=hk1_homelinks_enabled)
+    hk2 = _set_homelinks_line("".join(v2), enabled=False)
+    hk3 = _set_homelinks_line("".join(v3), enabled=False)
+    hk4 = _set_homelinks_line("".join(v4), enabled=False)
+
     return {
-        1: "".join(v1),
-        2: "".join(v2),
-        3: "".join(v3),
-        4: "".join(v4),
+        1: hk1,
+        2: hk2,
+        3: hk3,
+        4: hk4,
     }
 
 
-def write_variants(source_php_path: Path, target_dir: Path, dir_num: str) -> dict[int, Path]:
+def write_variants(
+    source_php_path: Path,
+    target_dir: Path,
+    dir_num: str,
+    *,
+    hk1_homelinks_enabled: bool = False,
+) -> dict[int, Path]:
     source_text = source_php_path.read_text(encoding="utf-8")
 
     mode = "html" if "HTML" in source_php_path.parts else "db"
-    variants = build_variants(source_text, dir_num, mode=mode)
+
+    variants = build_variants(
+        source_text,
+        dir_num,
+        mode=mode,
+        hk1_homelinks_enabled=hk1_homelinks_enabled,
+    )
 
     target_dir.mkdir(parents=True, exist_ok=True)
 
