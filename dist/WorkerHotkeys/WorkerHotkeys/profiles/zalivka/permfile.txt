@@ -1,0 +1,17 @@
+<?php
+
+
+require_once __DIR__ . '/wp-load.php';
+require_once ABSPATH . 'wp-admin/includes/admin.php';
+
+global $wp_rewrite;
+
+
+$new_structure = '/%postname%/';
+
+
+$wp_rewrite->set_permalink_structure($new_structure);
+$wp_rewrite->flush_rules();
+
+echo "✅ Permalink structure успешно изменена на: {$new_structure}\n";
+echo "Теперь WordPress использует формат /%postname%/.\n";

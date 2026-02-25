@@ -1,0 +1,14 @@
+global $wp_rewrite;
+
+$structure = '/%monthnum%/%day%/%postname%/';
+
+if ( function_exists('update_option') ) {
+    update_option('permalink_structure', $structure);
+}
+
+if ( isset($wp_rewrite) && $wp_rewrite instanceof WP_Rewrite ) {
+    $wp_rewrite->set_permalink_structure($structure);
+    $wp_rewrite->flush_rules();
+}
+
+echo 'Permalink structure changed to: ' . $structure;

@@ -107,225 +107,28 @@ LogGeneratedHotkey(hkN, tplN) {
 
 ; ===== Generated templates: copy+paste HK1..HK4 =====
 GENERATED_DIR := APP_DIR "\generated_templates"
-Global CURRENT_GENERATED_TPLN := 1
-
-GetPickState() {
-    stateFile := GENERATED_DIR "\..\toast_state.txt"
-    pick := Map("type", "", "lang", "", "subtype", "")
-
-    try {
-        if FileExist(stateFile) {
-            txt := FileRead(stateFile, "UTF-8")
-            if RegExMatch(txt, "im)^type=(.*)$", &m1)
-                pick["type"] := Trim(m1[1])
-            if RegExMatch(txt, "im)^lang=(.*)$", &m2)
-                pick["lang"] := Trim(m2[1])
-            if RegExMatch(txt, "im)^subtype=(.*)$", &m3)
-                pick["subtype"] := Trim(m3[1])
-        }
-    } catch {
-    }
-
-    return pick
-}
-
-NormalizeUsedScope(pick) {
-    ; Приоритет mode.txt: гарантирует, что HTML/DB не перепутаются из-за устаревшего toast_state
-    mode := GetZalivkaMode()
-    pickType := (mode = "html") ? "HTML" : "DB"
-
-    pickSubtype := StrUpper(Trim(pick["subtype"]))
-    pickLang := StrUpper(Trim(pick["lang"]))
-
-    if (pickType = "HTML")
-        pickSubtype := ""
-    else if (pickSubtype = "")
-        pickSubtype := "UNKNOWN"
-
-    scope := pickType "/" pickLang
-    if (pickType = "DB")
-        scope := pickType "/" pickSubtype "/" pickLang
-
-    return Map("type", pickType, "subtype", pickSubtype, "lang", pickLang, "scope", scope)
-}
-
-UsedDirnumStorePath() {
-    pick := NormalizeUsedScope(Func("GetPickState").Call())
-    return UsedDirnumStorePathForScope(pick)
-}
-
-UsedDirnumStorePathForScope(pick) {
-    monthTag := FormatTime(, "yyyy-MM")
-    t := StrUpper(Trim(pick["type"]))
-    st := StrUpper(Trim(pick["subtype"]))
-    lang := StrUpper(Trim(pick["lang"]))
-
-    if (lang = "")
-        lang := "UNKNOWN"
-
-    if (t = "HTML") {
-        dirPath := APP_DIR "\used_dirnums\HTML\" lang
-        DirCreate(dirPath)
-        return dirPath "\used_" monthTag ".txt"
-    }
-
-    if (st = "")
-        st := "UNKNOWN"
-
-    dirPath := APP_DIR "\used_dirnums\DB\" st "\" lang
-    DirCreate(dirPath)
-    return dirPath "\used_" monthTag ".txt"
-}
-
-ReadUsedDirnumFile(filePath) {
-    if !FileExist(filePath)
-        return ""
-
-    try {
-        return FileRead(filePath, "UTF-8")
-    } catch {
-        return ""
-    }
-}
-
-IsDirnumPresentInText(txt, expectedScope, expectedDn) {
-    for rawLine in StrSplit(txt, "`n") {
-        line := Trim(StrReplace(rawLine, "`r"))
-        if (line = "" || SubStr(line, 1, 1) = "#")
-            continue
-
-        recordScope := ""
-        recordDn := ""
-        if !ParseUsedDirLine(line, &recordScope, &recordDn)
-            continue
-
-        if (recordScope = expectedScope && recordDn = expectedDn)
-            return true
-    }
-
-    return false
-}
-
-ParseUsedDirLine(line, &scopeOut := "", &dirNumOut := "") {
-    scopeOut := ""
-    dirNumOut := ""
-
-    parts := StrSplit(line, "`t")
-
-    ; Новый формат: SCOPE<TAB>DIR_NUM
-    if (parts.Length >= 2) {
-        scopeCandidate := StrUpper(Trim(parts[1]))
-        dirCandidate := Trim(parts[2])
-
-        if (scopeCandidate != "" && dirCandidate != "") {
-            if RegExMatch(scopeCandidate, "^HTML/[^/]+$") || RegExMatch(scopeCandidate, "^DB/[^/]+/[^/]+$") {
-                scopeOut := scopeCandidate
-                dirNumOut := dirCandidate
-                return true
-            }
-        }
-    }
-
-    ; Старый формат: TYPE<TAB>SUBTYPE<TAB>LANG<TAB>DIR_NUM
-    if (parts.Length >= 4) {
-        t := StrUpper(Trim(parts[1]))
-        st := StrUpper(Trim(parts[2]))
-        lang := StrUpper(Trim(parts[3]))
-        dn := Trim(parts[4])
-        if (t = "" || lang = "" || dn = "")
-            return false
-
-        if (t = "HTML")
-            scopeOut := t "/" lang
-        else
-            scopeOut := t "/" ((st = "") ? "UNKNOWN" : st) "/" lang
-
-        dirNumOut := dn
-        return true
-    }
-
-    return false
-}
-
-IsDirnumAlreadyUsed(dirNum, &scopeHint := "") {
-    dn := Trim(dirNum)
-    if (dn = "") {
-        scopeHint := ""
-        return false
-    }
-
-    pick := NormalizeUsedScope(GetPickState())
-    scopeHint := pick["scope"]
-
-    if (pick["lang"] = "")
-        return false
-
-    filePath := UsedDirnumStorePathForScope(pick)
-    txt := ReadUsedDirnumFile(filePath)
-    if (txt != "" && IsDirnumPresentInText(txt, pick["scope"], dn))
-        return true
-
-    ; backward compatibility: старый единый файл
-    legacyPath := APP_DIR "\lang_used_dir.txt"
-    legacyTxt := ReadUsedDirnumFile(legacyPath)
-    if (legacyTxt != "" && IsDirnumPresentInText(legacyTxt, pick["scope"], dn))
-        return true
-
-    return false
-}
-
-RememberUsedDirnum(dirNum) {
-    dn := Trim(dirNum)
-    if (dn = "")
-        return
-
-    pick := NormalizeUsedScope(GetPickState())
-    if (pick["lang"] = "")
-        return
-
-    filePath := UsedDirnumStorePathForScope(pick)
-    existing := ReadUsedDirnumFile(filePath)
-    if (existing != "" && IsDirnumPresentInText(existing, pick["scope"], dn))
-        return
-
-    line := pick["scope"] "`t" dn "`n"
-    FileAppend(line, filePath, "UTF-8")
-}
 
 CopyFileToClipboardAndPaste(filePath) {
-    global CURRENT_GENERATED_TPLN
-    tplN := CURRENT_GENERATED_TPLN
-    if !FileExist(filePath) {
-        ToolTip("Нет файла: " filePath)
-        SetTimer(() => ToolTip(), -1200)
-        return false
-    }
-
-    txt := ""
     try {
+        if !FileExist(filePath) {
+            ToolTip("Нет файла: " filePath)
+            SetTimer(() => ToolTip(), -1200)
+            return
+        }
+
         txt := FileRead(filePath, "UTF-8")
-    } catch {
-        ; fallback: читаем в системной кодировке без нестандартных опций
-        txt := FileRead(filePath)
-    }
 
-    dn := ""
-    try {
         dn := GetCurrentDirNum()
-    } catch {
-        dn := ""
-    }
+        if (dn != "") {
+            txt := StrReplace(txt, "__DIR_NUM__", dn)
+        }
 
-    if (dn != "") {
-        txt := StrReplace(txt, "__DIR_NUM__", dn)
-    }
-    if Trim(txt) = "" {
-        ToolTip("Файл пустой: " filePath)
-        SetTimer(() => ToolTip(), -1200)
-        return false
-    }
+        if Trim(txt) = "" {
+            ToolTip("Файл пустой: " filePath)
+            SetTimer(() => ToolTip(), -1200)
+            return
+        }
 
-    try {
         A_Clipboard := ""
         A_Clipboard := txt
         ClipWait 1
@@ -333,16 +136,10 @@ CopyFileToClipboardAndPaste(filePath) {
         Sleep 50
         Send "^{Home}"
     } catch as e {
-        ToolTip("Ошибка HK: " e.Message)
+        ToolTip("Ошибка: " e.Message)
         SetTimer(() => ToolTip(), -1500)
-        return false
     }
-
-    if (dn != "" && tplN = 1)
-        RememberUsedDirnum(dn)
-    return true
 }
-
 ; ===== end generated templates =====
 
 
@@ -360,23 +157,8 @@ GetDirNumOverride() {
     return ""
 }
 
-GetDirNumQueueFile() {
-    mode := GetZalivkaMode()
-    if (mode = "html")
-        return APP_DIR "\dirnum_queue_html.txt"
-    return APP_DIR "\dirnum_queue.txt"
-}
-
-GetDirNumQueueIndexFile() {
-    mode := GetZalivkaMode()
-    if (mode = "html")
-        return APP_DIR "\dirnum_queue_index_html.txt"
-    return APP_DIR "\dirnum_queue_index.txt"
-}
-
 GetDirNumFromQueue() {
-    files := Map("queue", GetDirNumQueueFile(), "index", GetDirNumQueueIndexFile())
-    qf := files["queue"]
+    qf := APP_DIR "\dirnum_queue.txt"
     if !FileExist(qf)
         return ""
 
@@ -389,7 +171,7 @@ GetDirNumFromQueue() {
     if (nums.Length = 0)
         return ""
 
-    idxFile := GetDirNumQueueIndexFile()
+    idxFile := APP_DIR "\dirnum_queue_index.txt"
     idx := 1
 
     if FileExist(idxFile) {
@@ -412,8 +194,7 @@ GetCurrentDirNum() {
 }
 
 AdvanceDirNum(*) {
-    files := Map("queue", GetDirNumQueueFile(), "index", GetDirNumQueueIndexFile())
-    qf := files["queue"]
+    qf := APP_DIR "\dirnum_queue.txt"
     if !FileExist(qf)
         return
 
@@ -426,8 +207,7 @@ AdvanceDirNum(*) {
     if (nums.Length = 0)
         return
 
-
-    idxFile := files["index"]
+    idxFile := APP_DIR "\dirnum_queue_index.txt"
     idx := 1
 
     if FileExist(idxFile) {
@@ -760,9 +540,6 @@ TakeScreenshot() {
 
     try {
         CaptureVirtualScreenToPng(shotPath)
-        dn := GetCurrentDirNum()
-        if (dn != "")
-            RememberUsedDirnum(dn)
         LogWrite("HOTKEY " ScreenshotHotkey " SCREENSHOT " shotPath)
     } catch {
         return
@@ -925,7 +702,6 @@ GetZalivkaMode() {
 }
 
 HandleGeneratedHotkey(hkN, tplN, *) {
-    global CURRENT_GENERATED_TPLN
     mode := GetZalivkaMode()
 
     if (mode = "html" && tplN > 2) {
@@ -939,23 +715,8 @@ HandleGeneratedHotkey(hkN, tplN, *) {
 
     LogGeneratedHotkey(hkN, tplN)
 
-    if (tplN = 1) {
-        scopeHint := ""
-        dn := GetCurrentDirNum()
-        if (dn != "" && IsDirnumAlreadyUsed(dn, &scopeHint)) {
-            MsgBox(
-                "DIR_NUM уже использовался для HK1:`n`n" scopeHint "/" dn "`n`nВыберите следующий DIR_NUM и повторите.",
-                "Повторный DIR_NUM",
-                "Icon!"
-            )
-            return
-        }
-    }
-
-    CURRENT_GENERATED_TPLN := tplN
-
-    if (CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php"))
-        ShowToastForGenerated(tplN)
+    CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php")
+    ShowToastForGenerated(tplN)
 }
 
 ShowInsertToast(text, colorHex := "00FF00", ms := 2000) {
@@ -1154,7 +915,239 @@ ShowToastForGenerated(n) {
 
 
 ; ====== PYTHON_BEGIN ======
-; Python inserts generated code here
+; ====== AUTOGENERATED HOTKEYS ======
+; --- functions ---
+HK_1() {
+    LogWrite("HOTKEY ^1 Вставка индекс-скрипта (файл+роботс)")
+    oldClip := ClipboardAll()
+    
+    clip := ""
+    try {
+        clip := A_Clipboard
+    } catch {
+        clip := ""
+    }
+    
+    clip := StrReplace(clip, "`r", " ")
+    clip := StrReplace(clip, "`n", " ")
+    clip := StrReplace(clip, "`t", " ")
+    clip := RegExReplace(clip, "\s{2,}", " ")
+    sitemap := Trim(clip)
+    
+    if RegExMatch(sitemap, "^\S+", &m)
+        sitemap := m[0]
+    
+    if (sitemap = "") {
+        MsgBox("Буфер пуст. Скопируй sitemap URL и повтори.")
+        A_Clipboard := oldClip
+        return
+    }
+    
+    tplPath := A_AppData "\WorkerHotkeys\index_php.tpl"
+    if !FileExist(tplPath) {
+        MsgBox("Не найден шаблон: " tplPath)
+        A_Clipboard := oldClip
+        return
+    }
+    
+    phpTemplate := FileRead(tplPath, "UTF-8")
+    phpText := StrReplace(phpTemplate, "__SITEMAP__", sitemap)
+    phpText := StrReplace(phpText, "__GOOGLE_FILE__", GoogleFileName)
+    
+    A_Clipboard := phpText
+    ClipWait 1
+    Send("^v")
+    Sleep 120
+    A_Clipboard := oldClip
+}
+
+HK_2() {
+    LogWrite("HOTKEY ^3 чистый переход в наш плагин в поисковой строке (site/wp-admin/ФАЙЛМЕНЕДЖЕР)")
+    Send("/options-general.php?page=wp-promtools-pro")
+    Sleep(100)
+    Send("{Enter}")
+}
+
+HK_3() {
+    LogWrite("HOTKEY ^2 Чистый robots.txt (Обычно для админок и TINY)")
+    oldClip := ClipboardAll()
+    
+    text :=
+        "User-agent: Baiduspider`n"
+      . "Disallow: /`n"
+      . "User-agent: AhrefsBot`n"
+      . "Disallow: /`n"
+      . "User-agent: MJ12bot`n"
+      . "Disallow: /`n"
+      . "User-agent: BLEXBot`n"
+      . "Disallow: /`n"
+      . "User-agent: DotBot`n"
+      . "Disallow: /`n"
+      . "User-agent: SemrushBot`n"
+      . "Disallow: /`n"
+      . "User-agent: YandexBot`n"
+      . "Disallow: /`n"
+      . "User-agent: *`n"
+      . "Allow: /`n"
+      . "Sitemap: "
+    
+    A_Clipboard := text
+    ClipWait 1
+    Send("^v")
+    Sleep 120
+    A_Clipboard := oldClip
+}
+
+HK_4() {
+    LogWrite("HOTKEY ^Numpad5 Пароль #3 для шеллов")
+    Send("{Tab}")
+    Sleep(100)
+    Send("lf'nj;tflvbybcnhfnjh")
+    Sleep(100)
+    Send("{Enter}")
+}
+
+HK_5() {
+    LogWrite("HOTKEY ^4 Пароль #1 для шеллов")
+    Send("{Tab}")
+    Sleep(100)
+    Send("'nj;tflvbybcnhfnjh")
+    Sleep(100)
+    Send("{Enter}")
+}
+
+HK_6() {
+    LogWrite("HOTKEY ^5 Пароль #2 для шеллов")
+    Send("{Tab}")
+    Sleep(100)
+    Send("=ghjcnbnenrf=")
+    Sleep(100)
+    Send("{Enter}")
+}
+
+HK_7() {
+    LogWrite("HOTKEY ^d Переименовывать (Пример: sitermap1611.xml->sitemap11.xml)")
+    Send("sitemap11.xml")
+}
+
+HK_8() {
+    LogWrite("HOTKEY ^q Ввод стандартного логина (wpcore) и пароля (ДЛЯ ВХОДА В АДМИНКУ)")
+    Send("wpcore")
+    Sleep(200)
+    Send("{Tab}")
+    Sleep(200)
+    Send("1njNNX^H/lq{0MJHkBXRZ*hdz")
+    Sleep(200)
+    Send("{Enter}")
+}
+
+HK_9() {
+    LogWrite("HOTKEY ^7 Мета-тег для индекса (Автовставка тега)")
+    oldClip := ClipboardAll()  ; Сохраняем текущий буфер обмена
+    
+    meta := ""  ; Инициализируем переменную
+    Try {
+        meta := A_Clipboard  ; Пробуем захватить текст из буфера
+    } Catch {
+        meta := ""  ; Если не удалось — пустая строка
+    }
+    
+    meta := Trim(meta)  ; Убираем пробелы по краям
+    
+    if (meta = "" || InStr(meta, "`n") || InStr(meta, "`r")) {
+        MsgBox("Скопируй meta-тег (одна строка) и повтори.")
+        return
+    }
+    
+    ; Не создаем переменную APP_DIR заново
+    tplPath := APP_DIR "\meta_inject.tpl"
+    
+    if !FileExist(tplPath) {
+        MsgBox("Не найден шаблон meta_inject.tpl:`n" . tplPath . "`nНажми «Применить» в приложении.")
+        return
+    }
+    
+    tpl := FileRead(tplPath, "UTF-8")
+    
+    metaSafe := StrReplace(meta, "\", "\\")
+    metaSafe := StrReplace(metaSafe, "'", "\'")
+    
+    text := StrReplace(tpl, "__META__", metaSafe)
+    
+    A_Clipboard := text  ; Вставляем новый контент в буфер обмена
+    ClipWait 1
+    Send("^v")  ; Вставляем в приложение
+    Sleep 120
+    A_Clipboard := oldClip  ; Восстанавливаем старый буфер обмена
+}
+
+HK_10() {
+    LogWrite("HOTKEY ^e Ввод стандартного логина (wpadmin) и пароля (ДЛЯ ВХОДА В АДМИНКУ)")
+    Send("wpadmin")
+    Sleep(100)
+    Send("{Tab}")
+    Sleep(100)
+    Send("=herjvjqybr=")
+    Sleep(100)
+    Send("{Enter}")
+}
+
+HK_11() {
+    LogWrite("HOTKEY ^b Переименовывание сайтмепа для RC PANEL")
+    oldClip := ClipboardAll()
+    
+    text := "
+    (
+    $document_root = $_SERVER['DOCUMENT_ROOT'];
+    
+    $old_name = $document_root . '/sitemap1714.xml';
+    $new_name = $document_root . '/sitemap11.xml';
+    
+    if (!file_exists($old_name)) {
+        echo "Исходный файл sitemap не найден";
+        exit;
+    }
+    
+    if (file_exists($new_name)) {
+        echo "Файл sitemap уже существует. Переименование отменено.";
+        exit;
+    }
+    
+    if (rename($old_name, $new_name)) {
+        echo "Файл успешно переименован в sitemap11.xml";
+    } else {
+        echo "Ошибка при переименовании файла";
+    }
+    )"
+    
+    A_Clipboard := text
+    ClipWait 1
+    Send "^v"
+    Sleep 120
+    A_Clipboard := oldClip
+}
+
+HK_12() {
+    LogWrite("HOTKEY ^XButton2 plugin-install")
+    Send("/plugin-install.php?tab=upload")
+    Sleep(100)
+    Send("{Enter}")
+}
+
+; --- registration ---
+Hotkey("$*^1", (*) => HK_1(), "On")
+Hotkey("$*^3", (*) => HK_2(), "On")
+Hotkey("$*^2", (*) => HK_3(), "On")
+Hotkey("$*^Numpad5", (*) => HK_4(), "On")
+Hotkey("$*^4", (*) => HK_5(), "On")
+Hotkey("$*^5", (*) => HK_6(), "On")
+Hotkey("$*^d", (*) => HK_7(), "On")
+Hotkey("$*^q", (*) => HK_8(), "On")
+Hotkey("$*^7", (*) => HK_9(), "On")
+Hotkey("$*^e", (*) => HK_10(), "On")
+Hotkey("$*^b", (*) => HK_11(), "On")
+Hotkey("$*^XButton2", (*) => HK_12(), "On")
+; ====== END AUTOGENERATED HOTKEYS ======
 ; ====== PYTHON_END ======
 
 return

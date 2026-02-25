@@ -2,10 +2,12 @@ import shutil
 from pathlib import Path
 import subprocess
 import sys
+import os
 
 ROOT = Path(__file__).parent
 SRC_SCRIPTS = ROOT / "Scripts"
 DIST_APP = ROOT / "dist" / "WorkerHotkeys"  # onedir
+DIST_USERDATA = DIST_APP / "WorkerHotkeys"
 ADD_DATA_SEP = ";" if sys.platform.startswith("win") else ":"
 
 def die(msg: str):
@@ -32,6 +34,25 @@ def check_required_file(path: Path, title: str):
 
 def add_data(src: Path, dst: str) -> str:
     return f"{src}{ADD_DATA_SEP}{dst}"
+def copy_appdata_workerhotkeys(dst: Path) -> None:
+    appdata = os.getenv("APPDATA")
+    if not appdata:
+        die("Переменная APPDATA не задана")
+
+    src = Path(appdata) / "WorkerHotkeys"
+    if not src.exists() or not src.is_dir():
+        die(f"Папка WorkerHotkeys не найдена в APPDATA: {src}")
+
+    excluded_dirs = {"logs", "screenshots"}
+
+    def ignore(_: str, names: list[str]) -> set[str]:
+        return {name for name in names if name.lower() in excluded_dirs}
+
+    if dst.exists():
+        shutil.rmtree(dst)
+
+    shutil.copytree(src, dst, ignore=ignore)
+    print(f"User data copied: {src} -> {dst} (excluding: logs, Screenshots)")
 
 def main():
     # 1) check before build
@@ -65,6 +86,9 @@ def main():
     if dst_scripts.exists():
         shutil.rmtree(dst_scripts)
     shutil.copytree(SRC_SCRIPTS, dst_scripts)
+
+    # %APPDATA%\WorkerHotkeys (excluding logs and Screenshots)
+    copy_appdata_workerhotkeys(DIST_USERDATA)
 
     # 4) verify dist contains scripts
     check_scripts(dst_scripts)
