@@ -1937,7 +1937,11 @@ class MainWindow(QMainWindow):
                         func_lines.append("    ; empty ahk_raw body")
                     else:
                         for line in lines:
-                            func_lines.append("    " + line)
+                            stripped = line.lstrip()
+                            if stripped.startswith("@@"):
+                                func_lines.append("    ; " + line)
+                            else:
+                                func_lines.append("    " + line)
                 else:
                     func_lines.append(f'    ToolTip("Hotkey: {name} | action={action}")')
                     func_lines.append("    SetTimer(() => ToolTip(), -700)")
