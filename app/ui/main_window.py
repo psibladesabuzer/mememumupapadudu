@@ -69,7 +69,7 @@ from app.core.screenshot_settings import (
 )
 
 class DirnumFloatingWidget(QWidget):
-    def __init__(self, *, on_prev, on_next, on_apply_manual):
+    def __init__(self, *, on_prev, on_next, on_apply_manual, on_kind_changed):
         super().__init__(None, Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setWindowTitle("DIR_NUM")
         self.setObjectName("dirnumFloating")
@@ -79,6 +79,7 @@ class DirnumFloatingWidget(QWidget):
         self._on_prev = on_prev
         self._on_next = on_next
         self._on_apply_manual = on_apply_manual
+        self._kind = "db"
 
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
@@ -86,6 +87,15 @@ class DirnumFloatingWidget(QWidget):
 
         self.lbl_title = QLabel("DIR_NUM")
         self.lbl_title.setStyleSheet("font-weight: 700;")
+
+        row_kind = QHBoxLayout()
+        row_kind.setSpacing(8)
+        self.btn_kind_db = QPushButton("DB")
+        self.btn_kind_html = QPushButton("HTML")
+        self.btn_kind_db.clicked.connect(lambda: self.set_kind("db"))
+        self.btn_kind_html.clicked.connect(lambda: self.set_kind("html"))
+        row_kind.addWidget(self.btn_kind_db)
+        row_kind.addWidget(self.btn_kind_html)
 
         self.edt_dirnum = QLineEdit()
         self.edt_dirnum.setPlaceholderText("Введите DIR_NUM")
@@ -95,20 +105,39 @@ class DirnumFloatingWidget(QWidget):
         row_btns = QHBoxLayout()
         self.btn_prev = QPushButton("← Назад")
         self.btn_next = QPushButton("Дальше →")
-        self.btn_prev.clicked.connect(self._on_prev)
-        self.btn_next.clicked.connect(self._on_next)
+        self.btn_prev.clicked.connect(lambda: self._on_prev(self._kind))
+        self.btn_next.clicked.connect(lambda: self._on_next(self._kind))
         row_btns.addWidget(self.btn_prev)
         row_btns.addWidget(self.btn_next)
 
         root.addWidget(self.lbl_title)
+        root.addLayout(row_kind)
         root.addWidget(self.edt_dirnum)
         root.addLayout(row_btns)
 
+        self._update_kind_buttons()
+
     def _apply_manual(self) -> None:
-        self._on_apply_manual((self.edt_dirnum.text() or "").strip())
+        self._on_apply_manual((self.edt_dirnum.text() or "").strip(), self._kind)
 
     def set_dirnum(self, value: str) -> None:
         self.edt_dirnum.setText((value or "").strip())
+
+    def _update_kind_buttons(self) -> None:
+        """Refresh title/details for the currently active queue kind."""
+        self.lbl_title.setText(f"DIR_NUM {self._kind.upper()}")
+
+    def set_kind(self, kind: str) -> None:
+        """Compatibility hook used by MainWindow to switch DB/HTML context."""
+        normalized = (kind or "").strip().lower()
+        if normalized not in {"db", "html"}:
+            normalized = "db"
+        self._kind = normalized
+        self._update_kind_buttons()
+
+    def kind(self) -> str:
+        """Return currently selected queue kind (``db`` or ``html``)."""
+        return self._kind
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
@@ -1460,12 +1489,16 @@ class MainWindow(QMainWindow):
                     on_prev=self._dirnum_queue_prev,
                     on_next=self._dirnum_queue_next,
                     on_apply_manual=self._dirnum_queue_set_manual,
+                    on_kind_changed=self._on_dirnum_floating_kind_changed,
                 )
+            active_kind = "html" if getattr(self, "_pick_type", None) == "HTML" else "db"
+            self.dirnum_floating_widget.set_kind(active_kind)
             if place:
                 self._place_dirnum_floating_widget()
             self.dirnum_floating_widget.show()
             self.dirnum_floating_widget.raise_()
             self.btn_dirnum_float_toggle.setText("Выключить")
+            self._on_dirnum_floating_kind_changed(active_kind)
         else:
             if self.dirnum_floating_widget:
                 self.dirnum_floating_widget.hide()
@@ -1478,16 +1511,43 @@ class MainWindow(QMainWindow):
         self._set_dirnum_floating_enabled(new_enabled, place=new_enabled)
         self._save_dirnum_floating_enabled(new_enabled)
 
-    def _sync_dirnum_floating_widget(self, value: str) -> None:
+    def _sync_dirnum_floating_widget(self, value: str, *, kind: str | None = None) -> None:
         widget = getattr(self, "dirnum_floating_widget", None)
-        if widget and widget.isVisible():
-            widget.set_dirnum(value)
+        if not (widget and widget.isVisible()):
+            return
+        if kind is not None and widget.kind() != kind:
+            return
+        widget.set_dirnum(value)
 
-    def _dirnum_queue_prev(self) -> None:
-        kind = self._active_queue_kind()
+    def _resolve_queue_kind(self, kind: str | None = None) -> str:
+        if kind in ("db", "html"):
+            return str(kind)
+        return self._active_queue_kind()
+
+    def _on_dirnum_floating_kind_changed(self, kind: str) -> None:
+        queue_kind = self._resolve_queue_kind(kind)
         try:
-            queue = load_queue(kind) or []
-            idx = int(load_index(kind) or 1)
+            queue = load_queue(queue_kind) or []
+            idx = int(load_index(queue_kind) or 1)
+        except Exception:
+            queue = []
+            idx = 1
+
+        current = ""
+        if queue:
+            idx = max(1, min(idx, len(queue)))
+            current = str(queue[idx - 1])
+
+        if current:
+            self.dir_num_edit.setText(current)
+        self._sync_dirnum_floating_widget(current, kind=queue_kind)
+        self._dirnum_queue_refresh(apply_to_input=False)
+
+    def _dirnum_queue_prev(self, kind: str | None = None) -> None:
+        queue_kind = self._resolve_queue_kind(kind)
+        try:
+            queue = load_queue(queue_kind) or []
+            idx = int(load_index(queue_kind) or 1)
         except Exception:
             queue = []
             idx = 1
@@ -1503,14 +1563,14 @@ class MainWindow(QMainWindow):
 
         try:
             from app.core.dirnum_queue import save_index
-            save_index(idx, kind)
+            save_index(idx, queue_kind)
         except Exception as e:
             QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить индекс: {e}")
             return
 
         current = str(queue[idx - 1])
         self.dir_num_edit.setText(current)
-        self._sync_dirnum_floating_widget(current)
+        self._sync_dirnum_floating_widget(current, kind=queue_kind)
         self._dirnum_queue_refresh(apply_to_input=False)
 
         try:
@@ -1518,7 +1578,7 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-    def _dirnum_queue_set_manual(self, value: str) -> None:
+    def _dirnum_queue_set_manual(self, value: str, kind: str | None = None) -> None:
         v = (value or "").strip()
         if not v:
             return
@@ -1526,9 +1586,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "DIR_NUM", "DIR_NUM должен содержать только цифры.")
             return
 
-        kind = self._active_queue_kind()
+        queue_kind = self._resolve_queue_kind(kind)
         try:
-            queue = load_queue(kind) or []
+            queue = load_queue(queue_kind) or []
         except Exception:
             queue = []
 
@@ -1536,12 +1596,12 @@ class MainWindow(QMainWindow):
             idx = queue.index(v) + 1
             try:
                 from app.core.dirnum_queue import save_index
-                save_index(idx, kind)
+                save_index(idx, queue_kind)
             except Exception:
                 pass
 
         self.dir_num_edit.setText(v)
-        self._sync_dirnum_floating_widget(v)
+        self._sync_dirnum_floating_widget(v, kind=queue_kind)
         self._dirnum_queue_refresh(apply_to_input=False)
         try:
             self._regen_templates_with_new_dirnum(silent=True)
@@ -2071,6 +2131,9 @@ class MainWindow(QMainWindow):
 
     # ================= DIR_NUM очередь (bulk из Excel) =================
     def _active_queue_kind(self) -> str:
+        widget = getattr(self, "dirnum_floating_widget", None)
+        if widget and widget.isVisible():
+            return widget.kind()
         return "html" if getattr(self, "_pick_type", None) == "HTML" else "db"
 
     def _dirnum_queue_refresh(self, *, apply_to_input: bool = False) -> None:
@@ -2165,11 +2228,11 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-    def _dirnum_queue_next(self) -> None:
-        kind = self._active_queue_kind()
+    def _dirnum_queue_next(self, kind: str | None = None) -> None:
+        queue_kind = self._resolve_queue_kind(kind)
         try:
-            queue = load_queue(kind) or []
-            idx = int(load_index(kind) or 1)
+            queue = load_queue(queue_kind) or []
+            idx = int(load_index(queue_kind) or 1)
         except Exception:
             queue = []
             idx = 1
@@ -2186,14 +2249,14 @@ class MainWindow(QMainWindow):
 
         try:
             from app.core.dirnum_queue import save_index
-            save_index(idx, kind)
+            save_index(idx, queue_kind)
         except Exception as e:
             QMessageBox.critical(self, "DIR_NUM", f"Не удалось сохранить индекс: {e}")
             return
 
         current = str(queue[idx - 1])
         self.dir_num_edit.setText(current)
-        self._sync_dirnum_floating_widget(current)
+        self._sync_dirnum_floating_widget(current, kind=queue_kind)
 
         self._dirnum_queue_refresh(apply_to_input=False)
 
@@ -2229,7 +2292,7 @@ class MainWindow(QMainWindow):
             self._last_dirnum_seen = current
 
             self.dir_num_edit.setText(current)
-            self._sync_dirnum_floating_widget(current)
+            self._sync_dirnum_floating_widget(current, kind=kind)
 
             try:
                 self._regen_templates_with_new_dirnum(silent=True)
