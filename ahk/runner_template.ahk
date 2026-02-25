@@ -107,6 +107,7 @@ LogGeneratedHotkey(hkN, tplN) {
 
 ; ===== Generated templates: copy+paste HK1..HK4 =====
 GENERATED_DIR := APP_DIR "\generated_templates"
+Global CURRENT_GENERATED_TPLN := 1
 
 GetPickState() {
     stateFile := GENERATED_DIR "\..\toast_state.txt"
@@ -149,32 +150,60 @@ NormalizeUsedScope(pick) {
 }
 
 UsedDirnumStorePath() {
-    return APP_DIR "\lang_used_dir.txt"
+    pick := NormalizeUsedScope(Func("GetPickState").Call())
+    return UsedDirnumStorePathForScope(pick)
 }
 
-EnsureUsedDirnumStoreMonth(filePath) {
+UsedDirnumStorePathForScope(pick) {
     monthTag := FormatTime(, "yyyy-MM")
-    expectedHeader := "#month=" monthTag
+    t := StrUpper(Trim(pick["type"]))
+    st := StrUpper(Trim(pick["subtype"]))
+    lang := StrUpper(Trim(pick["lang"]))
 
-    if !FileExist(filePath) {
-        FileAppend(expectedHeader "`n", filePath, "UTF-8")
-        return
+    if (lang = "")
+        lang := "UNKNOWN"
+
+    if (t = "HTML") {
+        dirPath := APP_DIR "\used_dirnums\HTML\" lang
+        DirCreate(dirPath)
+        return dirPath "\used_" monthTag ".txt"
     }
 
-    firstLine := ""
+    if (st = "")
+        st := "UNKNOWN"
+
+    dirPath := APP_DIR "\used_dirnums\DB\" st "\" lang
+    DirCreate(dirPath)
+    return dirPath "\used_" monthTag ".txt"
+}
+
+ReadUsedDirnumFile(filePath) {
+    if !FileExist(filePath)
+        return ""
+
     try {
-        txt := FileRead(filePath, "UTF-8")
-        lines := StrSplit(txt, "`n")
-        if (lines.Length > 0)
-            firstLine := Trim(StrReplace(lines[1], "`r"))
+        return FileRead(filePath, "UTF-8")
     } catch {
-        firstLine := ""
+        return ""
+    }
+}
+
+IsDirnumPresentInText(txt, expectedScope, expectedDn) {
+    for rawLine in StrSplit(txt, "`n") {
+        line := Trim(StrReplace(rawLine, "`r"))
+        if (line = "" || SubStr(line, 1, 1) = "#")
+            continue
+
+        recordScope := ""
+        recordDn := ""
+        if !ParseUsedDirLine(line, &recordScope, &recordDn)
+            continue
+
+        if (recordScope = expectedScope && recordDn = expectedDn)
+            return true
     }
 
-    if (firstLine != expectedHeader) {
-        try FileDelete(filePath)
-        FileAppend(expectedHeader "`n", filePath, "UTF-8")
-    }
+    return false
 }
 
 ParseUsedDirLine(line, &scopeOut := "", &dirNumOut := "") {
@@ -225,36 +254,22 @@ IsDirnumAlreadyUsed(dirNum, &scopeHint := "") {
         return false
     }
 
-    pick := NormalizeUsedScope(Func("GetPickState").Call())
+    pick := NormalizeUsedScope(GetPickState())
     scopeHint := pick["scope"]
 
     if (pick["lang"] = "")
         return false
 
-    filePath := UsedDirnumStorePath()
-    EnsureUsedDirnumStoreMonth(filePath)
-    if !FileExist(filePath)
-        return false
+    filePath := UsedDirnumStorePathForScope(pick)
+    txt := ReadUsedDirnumFile(filePath)
+    if (txt != "" && IsDirnumPresentInText(txt, pick["scope"], dn))
+        return true
 
-    try {
-        txt := FileRead(filePath, "UTF-8")
-    } catch {
-        return false
-    }
-
-    for rawLine in StrSplit(txt, "`n") {
-        line := Trim(StrReplace(rawLine, "`r"))
-        if (line = "" || SubStr(line, 1, 1) = "#")
-            continue
-
-        recordScope := ""
-        recordDn := ""
-        if !ParseUsedDirLine(line, &recordScope, &recordDn)
-            continue
-
-        if (recordScope = pick["scope"] && recordDn = dn)
-            return true
-    }
+    ; backward compatibility: старый единый файл
+    legacyPath := APP_DIR "\lang_used_dir.txt"
+    legacyTxt := ReadUsedDirnumFile(legacyPath)
+    if (legacyTxt != "" && IsDirnumPresentInText(legacyTxt, pick["scope"], dn))
+        return true
 
     return false
 }
@@ -264,64 +279,70 @@ RememberUsedDirnum(dirNum) {
     if (dn = "")
         return
 
-    pick := NormalizeUsedScope(Func("GetPickState").Call())
+    pick := NormalizeUsedScope(GetPickState())
     if (pick["lang"] = "")
         return
 
-    filePath := UsedDirnumStorePath()
-    EnsureUsedDirnumStoreMonth(filePath)
+    filePath := UsedDirnumStorePathForScope(pick)
+    existing := ReadUsedDirnumFile(filePath)
+    if (existing != "" && IsDirnumPresentInText(existing, pick["scope"], dn))
+        return
+
     line := pick["scope"] "`t" dn "`n"
     FileAppend(line, filePath, "UTF-8")
 }
 
 CopyFileToClipboardAndPaste(filePath) {
+    global CURRENT_GENERATED_TPLN
+    tplN := CURRENT_GENERATED_TPLN
+    if !FileExist(filePath) {
+        ToolTip("Нет файла: " filePath)
+        SetTimer(() => ToolTip(), -1200)
+        return false
+    }
+
+    txt := ""
     try {
-        if !FileExist(filePath) {
-            ToolTip("Нет файла: " filePath)
-            SetTimer(() => ToolTip(), -1200)
-            return
-        }
+        txt := FileRead(filePath, "UTF-8")
+    } catch {
+        ; fallback: читаем в системной кодировке без нестандартных опций
+        txt := FileRead(filePath)
+    }
 
-        txt := ""
-        try {
-            txt := FileRead(filePath, "UTF-8")
-        } catch {
-            ; fallback: читаем в системной кодировке без нестандартных опций
-            txt := FileRead(filePath)
-        }
-
+    dn := ""
+    try {
+        dn := GetCurrentDirNum()
+    } catch {
         dn := ""
-        try {
-            dn := GetCurrentDirNum()
-        } catch {
-            dn := ""
-        }
+    }
 
-        if (dn != "") {
-            txt := StrReplace(txt, "__DIR_NUM__", dn)
-        }
+    if (dn != "") {
+        txt := StrReplace(txt, "__DIR_NUM__", dn)
 
-        if Trim(txt) = "" {
-            ToolTip("Файл пустой: " filePath)
-            SetTimer(() => ToolTip(), -1200)
-            return false
-        }
+    if Trim(txt) = "" {
+        ToolTip("Файл пустой: " filePath)
+        SetTimer(() => ToolTip(), -1200)
+        return false
+    }
 
+    try {
         A_Clipboard := ""
         A_Clipboard := txt
         ClipWait 1
         Send "^v"
         Sleep 50
         Send "^{Home}"
-        if (dn != "")
-            RememberUsedDirnum(dn)
-        return true
     } catch as e {
         ToolTip("Ошибка HK: " e.Message)
         SetTimer(() => ToolTip(), -1500)
         return false
     }
+
+    if (dn != "" && tplN = 1)
+        RememberUsedDirnum(dn)
+    return true
 }
+
 ; ===== end generated templates =====
 
 
@@ -739,6 +760,9 @@ TakeScreenshot() {
 
     try {
         CaptureVirtualScreenToPng(shotPath)
+        dn := GetCurrentDirNum()
+        if (dn != "")
+            RememberUsedDirnum(dn)
         LogWrite("HOTKEY " ScreenshotHotkey " SCREENSHOT " shotPath)
     } catch {
         return
@@ -914,7 +938,22 @@ HandleGeneratedHotkey(hkN, tplN, *) {
 
     LogGeneratedHotkey(hkN, tplN)
 
-    if (CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php"))
+    if (tplN = 1) {
+        scopeHint := ""
+        dn := GetCurrentDirNum()
+        if (dn != "" && IsDirnumAlreadyUsed(dn, &scopeHint)) {
+            MsgBox(
+                "DIR_NUM уже использовался для HK1:`n`n" scopeHint "/" dn "`n`nВыберите следующий DIR_NUM и повторите.",
+                "Повторный DIR_NUM",
+                "Icon!"
+            )
+            return
+        }
+    }
+
+    CURRENT_GENERATED_TPLN := tplN
+
+    if (CopyFileToClipboardAndPaste(GENERATED_DIR "\HK" tplN ".php", tplN))
         ShowToastForGenerated(tplN)
 }
 
