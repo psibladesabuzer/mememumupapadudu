@@ -114,7 +114,10 @@ def runtime_ahk_path(profile: str | None = None) -> Path:
     return profile_dir(profile) / "runtime.ahk"
 
 def generated_templates_dir() -> Path:
-    p = profile_dir() / "generated_templates"
+    # HK1..HK4 всегда храним в zalivka, независимо от active_profile.
+    # Это убирает путаницу, когда сотрудник случайно работает в профиле index,
+    # а хоткеи ожидают шаблоны именно заливки.
+    p = profile_dir("zalivka") / "generated_templates"
     p.mkdir(parents=True, exist_ok=True)
     return p
 

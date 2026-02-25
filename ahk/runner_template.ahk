@@ -20,7 +20,15 @@ CoordMode "ToolTip", "Screen"
 ; =================
 
 ; ====== PATHS (profile-aware) ======
-BASE_DIR := A_AppData "\WorkerHotkeys"
+; В сборке используем портативную базу рядом с runtime.ahk:
+;   <app_root>\profiles\<active>\runtime.ahk -> BASE_DIR=<app_root>
+; fallback для legacy/dev: %APPDATA%\WorkerHotkeys
+baseFromScript := A_ScriptDir "\..\.."
+if FileExist(baseFromScript "\profiles")
+    BASE_DIR := baseFromScript
+else
+    BASE_DIR := A_AppData "\WorkerHotkeys"
+
 ACTIVE_PROFILE_FILE := BASE_DIR "\active_profile.txt"
 
 active := "index"
