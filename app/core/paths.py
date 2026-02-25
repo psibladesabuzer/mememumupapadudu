@@ -8,9 +8,21 @@ APP_NAME = "WorkerHotkeys"
 
 
 def app_data_dir() -> Path:
-    # %APPDATA%\WorkerHotkeys
-    base = Path(os.environ.get("APPDATA", str(Path.home())))
-    p = base / APP_NAME
+    # В сборке храним данные рядом с exe:
+    # - prefer <exe_dir>/WorkerHotkeys (структура релиза)
+    # - fallback <exe_dir>, если там уже есть profiles
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        bundled_data_dir = exe_dir / APP_NAME
+
+        if bundled_data_dir.exists() or not (exe_dir / "profiles").exists():
+            p = bundled_data_dir
+        else:
+            p = exe_dir
+    else:
+        # Dev/запуск из исходников: %APPDATA%\WorkerHotkeys
+        base = Path(os.environ.get("APPDATA", str(Path.home())))
+        p = base / APP_NAME
     p.mkdir(parents=True, exist_ok=True)
     return p
 

@@ -293,8 +293,6 @@ RememberUsedDirnum(dirNum) {
 }
 
 CopyFileToClipboardAndPaste(filePath) {
-    global CURRENT_GENERATED_TPLN
-    tplN := CURRENT_GENERATED_TPLN
     if !FileExist(filePath) {
         ToolTip("Нет файла: " filePath)
         SetTimer(() => ToolTip(), -1200)
@@ -338,8 +336,7 @@ CopyFileToClipboardAndPaste(filePath) {
         return false
     }
 
-    if (dn != "" && tplN = 1)
-        RememberUsedDirnum(dn)
+    ; DIR_NUM помечается использованным только после успешного скриншота (TakeScreenshot)
     return true
 }
 
