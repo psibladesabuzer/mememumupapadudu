@@ -2,9 +2,60 @@ from __future__ import annotations
 
 from pathlib import Path
 import os
+import shutil
 import sys
 
 APP_NAME = "WorkerHotkeys"
+
+def appdata_worker_dir() -> Path:
+    base = Path(os.environ.get("APPDATA", str(Path.home())))
+    p = base / APP_NAME
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def ensure_appdata_layout_from_portable() -> Path:
+    """
+    На старте дублируем базовую структуру рядом с приложением в %APPDATA%\WorkerHotkeys.
+    Нужно для совместимости старых хоткеев/скриптов, которые читают данные только из AppData.
+    Копируем только отсутствующие файлы/папки, существующие пользовательские данные не перетираем.
+    """
+    dst_root = appdata_worker_dir()
+
+    candidates: list[Path] = []
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        candidates.extend([exe_dir / APP_NAME, exe_dir])
+    else:
+        project_root = Path(__file__).resolve().parents[2]
+        candidates.extend([project_root / APP_NAME, project_root])
+
+    src_root = None
+    for candidate in candidates:
+        if (candidate / "profiles").exists():
+            src_root = candidate
+            break
+
+    if src_root is None:
+        return dst_root
+
+    for item in src_root.iterdir():
+        target = dst_root / item.name
+        if target.exists():
+            continue
+
+        try:
+            if item.is_dir():
+                shutil.copytree(item, target)
+            elif item.is_file():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(item, target)
+        except Exception:
+            # best-effort sync: не ломаем запуск приложения из-за копирования
+            continue
+
+    return dst_root
+
 
 
 def app_data_dir() -> Path:
@@ -21,8 +72,7 @@ def app_data_dir() -> Path:
             p = exe_dir
     else:
         # Dev/запуск из исходников: %APPDATA%\WorkerHotkeys
-        base = Path(os.environ.get("APPDATA", str(Path.home())))
-        p = base / APP_NAME
+        p = appdata_worker_dir()
     p.mkdir(parents=True, exist_ok=True)
     return p
 

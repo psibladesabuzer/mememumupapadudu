@@ -525,13 +525,9 @@ class MainWindow(QMainWindow):
         self.edt_lang_search.setFixedWidth(190)
         self.edt_lang_search.textChanged.connect(self._on_lang_search_changed)
 
-        self.chk_homelinks = QCheckBox("Homelinks")
+        self.chk_homelinks = QCheckBox("Включить homelinks")
         self.chk_homelinks.setStyleSheet(
-            "QCheckBox { font-weight: 800; color: #ff7a7a; padding-left: 6px; }"
-            "QCheckBox::indicator { width: 20px; height: 20px; border-radius: 4px; "
-            "border: 2px solid #ff7a7a; background: rgba(15, 23, 42, 0.9); }"
-            "QCheckBox::indicator:checked { border: 2px solid #22c55e; background: #16a34a; }"
-            "QCheckBox::indicator:hover { border: 2px solid #fda4af; }"
+            "QCheckBox { font-weight: 700; color: #ffffff; padding-left: 6px; }"
         )
         self.chk_homelinks.setChecked(self._load_homelinks_enabled())
         self.chk_homelinks.toggled.connect(self._on_homelinks_toggled)
@@ -604,7 +600,7 @@ class MainWindow(QMainWindow):
 
         # --- Split view: DB | HTML ---
         self.splitter = QSplitter(Qt.Horizontal)
-        self.splitter.setHandleWidth(3)
+        self.splitter.setHandleWidth(6)
         self.splitter.setChildrenCollapsible(False)
 
         # =========================
@@ -1930,7 +1926,16 @@ class MainWindow(QMainWindow):
                     safe = payload.replace('"', "'")
                     func_lines.append(f'    MsgBox("{safe}")')
                 elif action == "ahk_raw":
-                    lines = payload.splitlines()
+                    normalized_payload = payload
+                    legacy_tpl_paths = {
+                        'A_AppData "\\WorkerHotkeys\\index_php.tpl"': 'APP_DIR "\\index_php.tpl"',
+                        'A_AppData "\\WorkerHotkeys\\meta_inject.tpl"': 'APP_DIR "\\meta_inject.tpl"',
+                        'A_AppData "\\WorkerHotkeys\\rename_sitemap.tpl"': 'APP_DIR "\\rename_sitemap.tpl"',
+                    }
+                    for old_path, new_path in legacy_tpl_paths.items():
+                        normalized_payload = normalized_payload.replace(old_path, new_path)
+
+                    lines = normalized_payload.splitlines()
                     if not any(line.strip() for line in lines):
                         func_lines.append("    ; empty ahk_raw body")
                     else:

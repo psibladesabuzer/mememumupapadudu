@@ -8,6 +8,7 @@ from PySide6.QtGui import QIcon
 
 from app.ui.main_window import MainWindow
 from app.core.theme import load_theme_name, apply_theme
+from app.core.paths import ensure_appdata_layout_from_portable
 
 
 def resource_path(relative: str) -> Path:
@@ -18,6 +19,7 @@ def resource_path(relative: str) -> Path:
 
 
 def main() -> int:
+    ensure_appdata_layout_from_portable()
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
 

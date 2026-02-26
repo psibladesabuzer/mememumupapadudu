@@ -54,6 +54,16 @@ QHeaderView::section {
     border-bottom: 1px solid #334155;
 }
 
+
+QSplitter::handle:horizontal {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+QSplitter::handle:horizontal:hover {
+    background: #ffffff;
+}
+
+
 QScrollBar:vertical {
     background: #0b1220;
     width: 12px;
