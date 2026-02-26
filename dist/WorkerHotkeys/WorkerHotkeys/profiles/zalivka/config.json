@@ -1,57 +1,83 @@
 {
   "items": [
     {
-      "name": "Пароль #3 для шеллов",
-      "combo": "^Numpad5",
-      "action": "ahk_raw",
-      "payload": "Send(\"{Tab}\")\nSleep(100)\nSend(\"lf'nj;tflvbybcnhfnjh\")\nSleep(100)\nSend(\"{Enter}\")\n"
-    },
-    {
       "name": "Пароль #1 для шеллов",
-      "combo": "^4",
+      "hotkey": "Ctrl + numpad_1",
+      "description": "Вставит пароль «=1=» и нажмёт Enter",
+      "combo": "^Numpad1",
       "action": "ahk_raw",
       "payload": "Send(\"{Tab}\")\nSleep(100)\nSend(\"'nj;tflvbybcnhfnjh\")\nSleep(100)\nSend(\"{Enter}\")\n"
     },
     {
       "name": "Пароль #2 для шеллов",
-      "combo": "^5",
+      "hotkey": "Ctrl + numpad_2",
+      "description": "Вставит пароль «=2=» и нажмёт Enter",
+      "combo": "^Numpad2",
       "action": "ahk_raw",
       "payload": "Send(\"{Tab}\")\nSleep(100)\nSend(\"=ghjcnbnenrf=\")\nSleep(100)\nSend(\"{Enter}\")\n"
     },
     {
-      "name": "Ввод стандартного логина (wpcore) и пароля (ДЛЯ ВХОДА В АДМИНКУ)",
-      "combo": "^q",
+      "name": "Пароль #3 для шеллов",
+      "hotkey": "Ctrl + numpad_3",
+      "description": "Вставит пароль «этожеадмин» и нажмёт Enter",
+      "combo": "^Numpad3",
       "action": "ahk_raw",
-      "payload": "Send(\"wpcore\")\nSleep(200)\nSend(\"{Tab}\")\nSleep(200)\nSend(\"1njNNX^H/lq{0MJHkBXRZ*hdz\")\nSleep(200)\nSend(\"{Enter}\")\n"
+      "payload": "Send(\"{Tab}\")\nSleep(100)\nSend(\"lf'nj;tflvbybcnhfnjh\")\nSleep(100)\nSend(\"{Enter}\")\n"
     },
     {
-      "name": "Ввод стандартного логина (wpadmin) и пароля (ДЛЯ ВХОДА В АДМИНКУ)",
+      "name": "Ввод стандартного логина (wpcore) и пароля (ДЛЯ ВХОДА В АДМИНКУ)",
+      "hotkey": "Ctrl + q",
+      "description": "В окне авторизации в админку вставит логин wpcore, вставит пароль в поле для паролей и войдёт",
+      "combo": "^q",
+      "action": "ahk_raw",
+      "payload": "Send(\"wpcore\")\nSleep(200)\nSend(\"{Tab}\")\nSleep(200)\nSend(\"1njNNX^H/lq{0MJHkBXRZ*hdz\")\nSleep(200)\nSend(\"{Enter}\")"
+    },
+    {
+      "name": "Ввод стандартного логина (admin) и пароля (ДЛЯ ВХОДА В АДМИНКУ)",
+      "hotkey": "Ctrl + e",
+      "description": "В окне авторизации в админку вставит логин wpadmin, вставит пароль в поле для паролей и войдёт",
       "combo": "^e",
       "action": "ahk_raw",
       "payload": "Send(\"wpadmin\")\nSleep(100)\nSend(\"{Tab}\")\nSleep(100)\nSend(\"=herjvjqybr=\")\nSleep(100)\nSend(\"{Enter}\")"
     },
     {
-      "name": "^1 ОБЫЧНЫЙ СКРИПТ",
+      "name": "Скриншот",
+      "hotkey": "Ctrl + 6",
+      "description": "Скриншот экрана",
       "combo": "^!#p",
-      "action": "ahk_raw",
+      "action": "msgbox",
       "payload": ""
     },
     {
-      "name": "^2 СКРИПТ-РОЛЛБЭК",
-      "combo": "^#!O",
-      "action": "ahk_raw",
+      "name": "Заливка",
+      "hotkey": "Ctrl + 1",
+      "description": "Вставляет скрипт заливки выбранного метода (DB/HTML) и языка",
+      "combo": "^#!1",
+      "action": "msgbox",
       "payload": ""
     },
     {
-      "name": "^3 СКРИПТ-САЙТМЕП",
-      "combo": "!#^I",
-      "action": "ahk_raw",
+      "name": "Sitemap",
+      "hotkey": "Ctrl + 2",
+      "description": "Вставляет скрипт заливки с 1 открытой командой «Sitemap»",
+      "combo": "^!#2",
+      "action": "msgbox",
       "payload": ""
     },
     {
-      "name": "^4 СКРИПТ-ХАЙД",
-      "combo": "!#^U",
-      "action": "ahk_raw",
+      "name": "Hide",
+      "hotkey": "Ctrl + 3",
+      "description": "Вставляет скрипт заливки с 1 открытой командой «Hide»",
+      "combo": "^!#3",
+      "action": "msgbox",
+      "payload": ""
+    },
+    {
+      "name": "Rollback/Force-Delete",
+      "hotkey": "Ctrl + 4",
+      "description": "Вставляет скрипт заливки  c 1-й открытой командой rollback (если выбран DB скрипт) / с командой force delete 1 (если выбран HTML скрипт)",
+      "combo": "!#^4",
+      "action": "msgbox",
       "payload": ""
     }
   ]
