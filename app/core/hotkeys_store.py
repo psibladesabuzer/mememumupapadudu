@@ -10,6 +10,8 @@ from app.core.paths import config_path, app_data_dir
 @dataclass
 class HotkeyItem:
     name: str
+    hotkey: str
+    description: str
     combo: str
     action: str
     payload: str
@@ -36,6 +38,8 @@ class HotkeysStore:
             result.append(
                 HotkeyItem(
                     name=str(x.get("name", "")),
+                    hotkey=str(x.get("hotkey", x.get("combo", ""))),
+                    description=str(x.get("description", "")),
                     combo=str(x.get("combo", "")),
                     action=str(x.get("action", "")),
                     payload=str(x.get("payload", "")),

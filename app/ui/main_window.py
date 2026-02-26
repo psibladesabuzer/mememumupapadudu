@@ -247,7 +247,7 @@ class MainWindow(QMainWindow):
             self.btn_screenshots.setIcon(QIcon(str(p)))
             self.btn_screenshots.setIconSize(icon_size)
 
-        self.btn_apply = QPushButton("Применить")
+        self.btn_apply = QPushButton("Включить")
         self.btn_apply.setObjectName("primary")
         p = resource_path("assets/apply.png")
         if p.exists():
@@ -261,8 +261,8 @@ class MainWindow(QMainWindow):
         btn_row.addStretch(1)
         btn_row.addWidget(self.btn_apply)
 
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["Название", "Комбо", "Действие", "Payload"])
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["Название", "Хоткей", "Что делает"])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -385,7 +385,7 @@ class MainWindow(QMainWindow):
 
         hint = QLabel(
             "Подсказка: ^ = Ctrl, # = Win, ! = Alt, + = Shift. Пример: ^6, #n, ^+6.\n"
-            "После изменения хоткея нажми «Применить», чтобы AHK перезапустился."
+            "После изменения хоткея нажми «Включить», чтобы AHK перезапустился."
         )
         hint.setWordWrap(True)
 
@@ -1626,7 +1626,7 @@ class MainWindow(QMainWindow):
                 self,
                 "Готово",
                 "Хоткей сохранён.\n\n"
-                "Нажмите «Применить», чтобы AHK перезапустился и подхватил новый хоткей."
+                "Нажмите «Включить», чтобы AHK перезапустился и подхватил новый хоткей."
             )
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"{type(e).__name__}: {e}")
@@ -1668,7 +1668,7 @@ class MainWindow(QMainWindow):
                 "Профиль переключён",
                 "Готово.\n\n"
                 "Теперь активен другой режим.\n"
-                "Нажмите «Применить», чтобы включить хоткеи этого профиля."
+                "Нажмите «Включить», чтобы включить хоткеи этого профиля."
             )
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"{type(e).__name__}: {e}")
@@ -1753,10 +1753,8 @@ class MainWindow(QMainWindow):
         self.table.setRowCount(len(self.store.items))
         for r, hk in enumerate(self.store.items):
             self.table.setItem(r, 0, QTableWidgetItem(hk.name))
-            self.table.setItem(r, 1, QTableWidgetItem(hk.combo))
-            self.table.setItem(r, 2, QTableWidgetItem(hk.action))
-            preview = hk.payload if len(hk.payload) <= 120 else hk.payload[:120] + "…"
-            self.table.setItem(r, 3, QTableWidgetItem(preview))
+            self.table.setItem(r, 1, QTableWidgetItem(hk.hotkey))
+            self.table.setItem(r, 2, QTableWidgetItem(hk.description))
 
     def _selected_row(self) -> int:
         return self.table.currentRow()
@@ -1866,7 +1864,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self, "Импорт",
                 "Готово!\n\nНовая конфигурация применена.\n\n"
-                "Чтобы хоткеи в фоне обновились — нажмите «Применить»."
+                "Чтобы хоткеи в фоне обновились — нажмите «Включить»."
             )
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"{type(e).__name__}: {e}")

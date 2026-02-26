@@ -26,6 +26,16 @@ class HotkeyDialog(QDialog):
         self.name_edit = QLineEdit()
         layout.addWidget(self.name_edit)
 
+        # hotkey (human readable)
+        layout.addWidget(QLabel("Хоткей (текстовое описание комбинации)"))
+        self.hotkey_edit = QLineEdit()
+        layout.addWidget(self.hotkey_edit)
+
+        # description
+        layout.addWidget(QLabel("Что делает"))
+        self.description_edit = QLineEdit()
+        layout.addWidget(self.description_edit)
+
         # combo
         layout.addWidget(QLabel("Комбо (AHK v2). Примеры: ^!j, ^', #q, ^!F1"))
         self.combo_edit = QLineEdit()
@@ -65,6 +75,8 @@ class HotkeyDialog(QDialog):
         # fill initial
         if initial is not None:
             self.name_edit.setText(initial.name)
+            self.hotkey_edit.setText(initial.hotkey)
+            self.description_edit.setText(initial.description)
             self.combo_edit.setText(initial.combo)
             idx = self.action_combo.findText(initial.action)
             if idx >= 0:
@@ -73,12 +85,20 @@ class HotkeyDialog(QDialog):
 
     def _on_ok(self):
         name = self.name_edit.text().strip()
+        hotkey = self.hotkey_edit.text().strip()
+        description = self.description_edit.text().strip()
         combo = self.combo_edit.text().strip()
         action = self.action_combo.currentText().strip()
         payload = self.payload_edit.toPlainText()
 
         if not name:
             QMessageBox.warning(self, "Ошибка", "Укажи название хоткея.")
+            return
+        if not hotkey:
+            QMessageBox.warning(self, "Ошибка", "Укажи хоткей (текстовое описание).")
+            return
+        if not description:
+            QMessageBox.warning(self, "Ошибка", "Укажи, что делает хоткей.")
             return
         if not combo:
             QMessageBox.warning(self, "Ошибка", "Укажи комбинацию (комбо).")
@@ -92,6 +112,8 @@ class HotkeyDialog(QDialog):
     def result_item(self) -> HotkeyItem:
         return HotkeyItem(
             name=self.name_edit.text().strip(),
+            hotkey=self.hotkey_edit.text().strip(),
+            description=self.description_edit.text().strip(),
             combo=self.combo_edit.text().strip(),
             action=self.action_combo.currentText().strip(),
             payload=self.payload_edit.toPlainText(),
