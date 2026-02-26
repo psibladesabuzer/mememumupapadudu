@@ -12,7 +12,7 @@ $actions = array (
   'hide' => 1,
   'send' => 1,
   'clean' => 1,
-  // 'homeLinks' => 1,
+  'homeLinks' => 1,
 
   //'sitemap' => 1,
   //'sitemapSecondMethod' => 1,
