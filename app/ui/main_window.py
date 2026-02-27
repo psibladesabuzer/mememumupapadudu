@@ -445,13 +445,13 @@ class MainWindow(QMainWindow):
         # --- DIR_NUM queue (bulk paste from Excel) ---
         self.dirnum_bulk_db = QPlainTextEdit()
         self.dirnum_bulk_db.setPlaceholderText(
-            "Вставь сюда пути архивов DB/ZALIV и DB/DOZALIV, пример: CSN/OLDSINGLE/EN/1"
+            "Вставь сюда пути архивов DB, пример: CSN/OLDSINGLE/EN/1"
         )
         self.dirnum_bulk_db.setFixedHeight(92)
 
         self.dirnum_bulk_html = QPlainTextEdit()
         self.dirnum_bulk_html.setPlaceholderText(
-            "Вставь сюда пути HTML архивов, пример: CSN/OLDSINGLE/EN/1"
+            "Вставь сюда пути HTML архивов, пример: CSN/OLDSINGLEHT/HTML/EN/1"
         )
         self.dirnum_bulk_html.setFixedHeight(92)
 
