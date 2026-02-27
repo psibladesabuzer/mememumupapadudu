@@ -349,7 +349,7 @@ class MainWindow(QMainWindow):
         row_shk = QHBoxLayout()
         row_shk.setSpacing(10)
 
-        lbl_shk = QLabel("Хоткей скриншота:")
+        lbl_shk = QLabel("Сделать скриншот:")
         self.edt_shk = QLineEdit()
         self.edt_shk.setPlaceholderText("^6  (Ctrl+6)  или  #n  (Win+N)")
         self.edt_shk.setText(self._load_screenshot_hotkey())
@@ -619,13 +619,34 @@ class MainWindow(QMainWindow):
         row_db_btns = QHBoxLayout()
         row_db_btns.setSpacing(10)
 
+        def back_to_languages(kind: str) -> None:
+            t = (kind or "").strip().upper()
+            if t == "DB":
+                self._state_db["lang"] = None
+                self._state_db["stage"] = 0
+                self._pick_type = "DB"
+                self._pick_subtype = self._state_db.get("subtype") or "ZALIV"
+            else:
+                self._state_html["lang"] = None
+                self._state_html["stage"] = 0
+                self._pick_type = "HTML"
+                self._pick_subtype = None
+
+            self._pick_lang = None
+            self._pick_lang_stage = 0
+            self._refresh_pick_ui()
+
         self.btn_pick_zaliv = QPushButton("ZALIV")
         self.btn_pick_dozaliv = QPushButton("DOZALIV")
+        self.btn_back_db = QPushButton("Другой язык")
         self.btn_pick_zaliv.setMinimumHeight(34)
         self.btn_pick_dozaliv.setMinimumHeight(34)
+        self.btn_back_db.setMinimumHeight(34)
+        self.btn_back_db.clicked.connect(lambda: back_to_languages("DB"))
 
         row_db_btns.addWidget(self.btn_pick_zaliv)
         row_db_btns.addWidget(self.btn_pick_dozaliv)
+        row_db_btns.addWidget(self.btn_back_db)
         row_db_btns.addStretch(1)
         db_layout.addLayout(row_db_btns)
 
@@ -656,10 +677,16 @@ class MainWindow(QMainWindow):
         self.btn_mode_html.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.btn_mode_html.clicked.connect(self._toggle_html_panel)
 
-        # HTML has no subtype row; keep a spacer with same height as DB subtype row for visual alignment
-        self.html_subtype_spacer = QWidget()
-        self.html_subtype_spacer.setFixedHeight(34)
-        html_layout.addWidget(self.html_subtype_spacer)
+        # HTML has no subtype row; reserve a same-height controls row for "back to language list" action
+        self.html_controls_row = QHBoxLayout()
+        self.html_controls_row.setContentsMargins(0, 0, 0, 0)
+        self.html_controls_row.setSpacing(10)
+        self.btn_back_html = QPushButton("Другой язык")
+        self.btn_back_html.setMinimumHeight(34)
+        self.btn_back_html.clicked.connect(lambda: back_to_languages("HTML"))
+        self.html_controls_row.addWidget(self.btn_back_html)
+        self.html_controls_row.addStretch(1)
+        html_layout.addLayout(self.html_controls_row)
 
         self.html_lang_scroll = QScrollArea()
         self.html_lang_scroll.setWidgetResizable(True)
@@ -725,8 +752,12 @@ class MainWindow(QMainWindow):
 
         # mode visibility: show lists only after clicking DB/HTML
         self._mode: str | None = None
+        self._db_active = False
+        self._html_active = False
         self.btn_pick_zaliv.setVisible(False)
         self.btn_pick_dozaliv.setVisible(False)
+        self.btn_back_db.setVisible(False)
+        self.btn_back_html.setVisible(False)
         self.db_lang_scroll.setVisible(False)
         self.html_lang_scroll.setVisible(False)
 
@@ -1114,6 +1145,13 @@ class MainWindow(QMainWindow):
 
         paint(self.btn_pick_zaliv, (self._state_db.get("subtype") == "ZALIV"))
         paint(self.btn_pick_dozaliv, (self._state_db.get("subtype") == "DOZALIV"))
+
+        db_lang_selected = bool(self._state_db.get("lang"))
+        html_lang_selected = bool(self._state_html.get("lang"))
+        if hasattr(self, "btn_back_db"):
+            self.btn_back_db.setVisible(self._db_active and db_lang_selected)
+        if hasattr(self, "btn_back_html"):
+            self.btn_back_html.setVisible(self._html_active and html_lang_selected)
 
         # Hints are shown only for the last confirmed (global) selection
         show_hint = (self._pick_lang_stage == 2 and self._pick_lang)

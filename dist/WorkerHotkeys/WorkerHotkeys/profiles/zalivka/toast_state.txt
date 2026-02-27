@@ -1,3 +1,3 @@
-type=DB
-lang=ARAB
-subtype=ZALIV
+type=HTML
+lang=BR
+subtype=

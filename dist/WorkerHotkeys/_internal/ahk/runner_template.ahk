@@ -949,8 +949,8 @@ HandleGeneratedHotkey(hkN, tplN, *) {
         dn := GetCurrentDirNum()
         if (dn != "" && IsDirnumAlreadyUsed(dn, &scopeHint)) {
             MsgBox(
-                "DIR_NUM уже использовался для HK1:`n`n" scopeHint "/" dn "`n`nВыберите следующий DIR_NUM и повторите.",
-                "Повторный DIR_NUM",
+                "Вы используете повторно DIR_NUM:`n`n" scopeHint "/" dn "`n`nВыберите следующий DIR_NUM и повторите.",
+                "Внимание!",
                 "Icon!"
             )
             return
@@ -999,7 +999,7 @@ HideToastGui(gui) {
     gui.Hide()
 }
 
-ShowScreenshotToast(text := "Скриншот сделан", ms := 2000) {
+ShowScreenshotToast(text := "Скриншот сделан", ms := 2250) {
     try {
         toastGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
         toastGui.BackColor := "0x111827"
@@ -1007,7 +1007,7 @@ ShowScreenshotToast(text := "Скриншот сделан", ms := 2000) {
         toastGui.MarginY := 12
 
         toastGui.SetFont("s14 Bold", "Segoe UI")
-        toastGui.AddText("c0x2e7d32 Center", text)
+        toastGui.AddText("cWhite  Center", text)
 
         toastGui.Show("AutoSize NoActivate")
 

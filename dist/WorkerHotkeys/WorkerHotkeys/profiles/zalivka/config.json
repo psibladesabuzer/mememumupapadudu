@@ -41,14 +41,6 @@
       "payload": "Send(\"wpadmin\")\nSleep(100)\nSend(\"{Tab}\")\nSleep(100)\nSend(\"=herjvjqybr=\")\nSleep(100)\nSend(\"{Enter}\")"
     },
     {
-      "name": "Скриншот",
-      "hotkey": "Ctrl + 6",
-      "description": "Скриншот экрана",
-      "combo": "^!#p",
-      "action": "msgbox",
-      "payload": ""
-    },
-    {
       "name": "Заливка",
       "hotkey": "Ctrl + 1",
       "description": "Вставляет скрипт заливки выбранного метода (DB/HTML) и языка",
