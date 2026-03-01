@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import re
 import shutil
 from pathlib import Path
 from PySide6.QtCore import QTimer
@@ -79,6 +80,7 @@ class DirnumFloatingWidget(QWidget):
         self._on_prev = on_prev
         self._on_next = on_next
         self._on_apply_manual = on_apply_manual
+        self._on_kind_changed = on_kind_changed
         self._kind = "db"
 
         root = QVBoxLayout(self)
@@ -123,6 +125,9 @@ class DirnumFloatingWidget(QWidget):
     def set_dirnum(self, value: str) -> None:
         self.edt_dirnum.setText((value or "").strip())
 
+    def set_title(self, text: str) -> None:
+        self.lbl_title.setText((text or "DIR_NUM").strip())
+
     def _update_kind_buttons(self) -> None:
         """Refresh title/details for the currently active queue kind."""
         self.lbl_title.setText(f"DIR_NUM {self._kind.upper()}")
@@ -132,8 +137,11 @@ class DirnumFloatingWidget(QWidget):
         normalized = (kind or "").strip().lower()
         if normalized not in {"db", "html"}:
             normalized = "db"
+        changed = (self._kind != normalized)
         self._kind = normalized
         self._update_kind_buttons()
+        if changed and callable(self._on_kind_changed):
+            self._on_kind_changed(self._kind)
 
     def kind(self) -> str:
         """Return currently selected queue kind (``db`` or ``html``)."""
@@ -1200,6 +1208,72 @@ class MainWindow(QMainWindow):
         self.dir_num_label.setVisible(show_dir)
         self.dir_num_edit.setVisible(show_dir)
         self.btn_dirnum_save.setVisible(show_dir)
+        updater = getattr(self, "_update_dirnum_label_text", None)
+        if callable(updater):
+            updater()
+
+    def _extract_db_sitemap_token(self, src: Path | None) -> str:
+        if not isinstance(src, Path) or not src.exists():
+            return ""
+        try:
+            txt = src.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            return ""
+
+        m = re.search(
+            r'define\s*\(\s*["\']SITEMAP_NAME["\']\s*,\s*["\']([^"\']+)["\']\s*\)',
+            txt,
+            flags=re.IGNORECASE,
+        )
+        if not m:
+            return ""
+
+        raw = (m.group(1) or "").strip()
+        if not raw:
+            return ""
+
+        # Если это sitemap + цифры — возвращаем всю строку
+        if re.match(r"(?i)^sitemap\d+$", raw):
+            return raw
+
+        return raw
+
+    def _build_dirnum_label_text(self, kind: str | None = None) -> str:
+        label = "DIR_NUM"
+        resolved = (kind or getattr(self, "_pick_type", "") or "").strip().upper()
+
+        if resolved == "DB":
+            state_db = getattr(self, "_state_db", {}) or {}
+            subtype = str(getattr(self, "_pick_subtype", "") or state_db.get("subtype") or "").upper()
+            lang = str(getattr(self, "_pick_lang", "") or state_db.get("lang") or "").upper()
+
+            src = getattr(self, "_last_template_src", None)
+            if not isinstance(src, Path) or not src.exists():
+                src = self._selected_php_path()
+            sitemap_token = self._extract_db_sitemap_token(src)
+
+            parts = [label, "DB"]
+            if subtype:
+                parts.append(subtype)
+            if lang:
+                parts.append(lang)
+            if sitemap_token:
+                parts.append(sitemap_token)
+            return " ".join(parts)
+
+        if resolved == "HTML":
+            return "DIR_NUM HTML sitemap.xml"
+
+        return label
+
+    def _update_dirnum_label_text(self) -> None:
+        if hasattr(self, "dir_num_label"):
+            self.dir_num_label.setText(f"{self._build_dirnum_label_text()}:")
+
+        widget = getattr(self, "dirnum_floating_widget", None)
+        if widget and widget.isVisible():
+            widget_kind = "HTML" if widget.kind() == "html" else "DB"
+            widget.set_title(self._build_dirnum_label_text(widget_kind))
 
     def _toggle_db_panel(self) -> None:
         # DB и HTML независимы: включаем/выключаем только DB-зону
@@ -2213,6 +2287,9 @@ class MainWindow(QMainWindow):
 
         self.btn_dirnum_queue_next.setEnabled(active_total > 0)
         self._sync_dirnum_floating_widget(active_current or "")
+        updater = getattr(self, "_update_dirnum_label_text", None)
+        if callable(updater):
+            updater()
 
         if apply_to_input and active_current:
             if not (self.dir_num_edit.text() or "").strip():
