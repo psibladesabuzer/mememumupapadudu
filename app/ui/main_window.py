@@ -2064,7 +2064,7 @@ class MainWindow(QMainWindow):
                 func_lines.append("}")
                 func_lines.append("")
 
-                reg_lines.append(f'Hotkey("$*{combo}", (*) => {fn_name}(), "On")')
+                reg_lines.append(f'Hotkey("$*{combo}", RunHotkeySafely.Bind({fn_name}), "On")')
 
             active = get_active_profile()
 
