@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
+import tempfile
 import re
 import shutil
 from pathlib import Path
@@ -44,6 +47,7 @@ from app.core.templates import ensure_index_template
 from app.core.paths import (
     dirnum_floating_enabled_path,
     homelinks_enabled_path,
+    php_tag_enabled_path,
     dirnum_next_hotkey_path,
     runtime_ahk_path,
     rename_sitemap_template_path,
@@ -209,6 +213,7 @@ class MainWindow(QMainWindow):
         self.screenshots_enabled_file = screenshots_enabled_path()
 
         self.dirnum_floating_widget: DirnumFloatingWidget | None = None
+        self._force_exit = False
 
         root = QWidget()
         root_layout = QVBoxLayout(root)
@@ -391,6 +396,15 @@ class MainWindow(QMainWindow):
         row_dirnum_float.addWidget(self.btn_dirnum_float_toggle)
         row_dirnum_float.addStretch(1)
 
+        row_uninstall = QHBoxLayout()
+        row_uninstall.setSpacing(10)
+        self.lbl_uninstall = QLabel("Удаление программы:")
+        self.btn_uninstall_app = QPushButton("Удалить программу...")
+        self.btn_uninstall_app.clicked.connect(self.uninstall_app)
+        row_uninstall.addWidget(self.lbl_uninstall)
+        row_uninstall.addWidget(self.btn_uninstall_app)
+        row_uninstall.addStretch(1)
+
         hint = QLabel(
             "Подсказка: ^ = Ctrl, # = Win, ! = Alt, + = Shift. Пример: ^6, #n, ^+6.\n"
             "После изменения хоткея нажми «Включить», чтобы AHK перезапустился."
@@ -404,6 +418,7 @@ class MainWindow(QMainWindow):
         settings_layout.addLayout(row_shk)
         settings_layout.addLayout(row_screen)
         settings_layout.addLayout(row_dirnum_float)
+        settings_layout.addLayout(row_uninstall)
         settings_layout.addWidget(hint)
         settings_layout.addStretch(1)
 
@@ -540,6 +555,13 @@ class MainWindow(QMainWindow):
         self.chk_homelinks.setChecked(self._load_homelinks_enabled())
         self.chk_homelinks.toggled.connect(self._on_homelinks_toggled)
 
+        self.chk_php_tag = QCheckBox("<?php у скрипта")
+        self.chk_php_tag.setStyleSheet(
+            "QCheckBox { font-weight: 700; color: #ffffff; padding-left: 6px; }"
+        )
+        self.chk_php_tag.setChecked(self._load_php_tag_enabled())
+        self.chk_php_tag.toggled.connect(self._on_php_tag_toggled)
+
         self.lbl_lang_search.setVisible(True)
         self.edt_lang_search.setVisible(True)
 
@@ -587,6 +609,7 @@ class MainWindow(QMainWindow):
         row_search.addWidget(self.edt_lang_search)
         row_search.addSpacing(8)
         row_search.addWidget(self.chk_homelinks)
+        row_search.addWidget(self.chk_php_tag)
 
         row_dirnum = QHBoxLayout()
         row_dirnum.addWidget(self.lbl_dirnum_next_hotkey)
@@ -1563,6 +1586,29 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
 
+    def _load_php_tag_enabled(self) -> bool:
+        p = php_tag_enabled_path()
+        if not p.exists():
+            return False
+        try:
+            raw = (p.read_text(encoding="utf-8") or "").strip().lower()
+            return raw in ("1", "true", "yes", "on")
+        except Exception:
+            return False
+
+    def _save_php_tag_enabled(self, enabled: bool) -> None:
+        p = php_tag_enabled_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("1" if enabled else "0", encoding="utf-8")
+
+    def _on_php_tag_toggled(self, checked: bool) -> None:
+        self._save_php_tag_enabled(bool(checked))
+        if self._pick_lang_stage == 2 and getattr(self, "_last_template_src", None):
+            try:
+                self._generate_lang_templates()
+            except Exception:
+                pass
+
     def _load_dirnum_floating_enabled(self) -> bool:
         p = dirnum_floating_enabled_path()
         if not p.exists():
@@ -1827,6 +1873,7 @@ class MainWindow(QMainWindow):
         self.activateWindow()
 
     def quit_app(self) -> None:
+        self._force_exit = True
         if self.dirnum_floating_widget:
             self.dirnum_floating_widget.hide()
         if self.tray:
@@ -1834,6 +1881,11 @@ class MainWindow(QMainWindow):
         QApplication.quit()
 
     def closeEvent(self, event) -> None:
+        if self._force_exit:
+            if self.dirnum_floating_widget:
+                self.dirnum_floating_widget.hide()
+            super().closeEvent(event)
+            return
         if self.tray and self.tray.isVisible():
             self.hide()
             if self.dirnum_floating_widget and self.dirnum_floating_widget.isVisible():
@@ -1917,6 +1969,97 @@ class MainWindow(QMainWindow):
     def open_screenshots_folder(self) -> None:
         p = screenshots_dir()
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(p)))
+
+    def uninstall_app(self) -> None:
+        if not getattr(sys, "frozen", False):
+            QMessageBox.information(
+                self,
+                "Удаление программы",
+                "Автоудаление доступно только в собранной версии приложения.\n\n"
+                "Конфиги и настройки уже хранятся отдельно в %APPDATA%\\WorkerHotkeys и не будут удалены."
+            )
+            return
+
+        install_dir = Path(sys.executable).resolve().parent
+        appdata_dir = Path(os.environ.get("APPDATA", str(Path.home()))) / "WorkerHotkeys"
+
+        if not self._can_uninstall_from(install_dir):
+            QMessageBox.warning(
+                self,
+                "Удаление программы",
+                "Не удалось безопасно определить папку установки для удаления.\n\n"
+                f"Найденная папка:\n{install_dir}\n\n"
+                "Конфиги и настройки останутся в:\n"
+                f"{appdata_dir}"
+            )
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Удаление программы",
+            "Будет полностью удалена папка программы.\n\n"
+            f"Папка программы:\n{install_dir}\n\n"
+            "Конфиги и настройки останутся без изменений в:\n"
+            f"{appdata_dir}\n\n"
+            "Продолжить?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if confirm != QMessageBox.Yes:
+            return
+
+        try:
+            self.ahk.stop()
+        except Exception:
+            pass
+
+        try:
+            self._schedule_install_dir_removal(install_dir)
+        except Exception as e:
+            QMessageBox.critical(self, "Удаление программы", f"{type(e).__name__}: {e}")
+            return
+
+        QMessageBox.information(
+            self,
+            "Удаление программы",
+            "Приложение будет закрыто, после чего папка программы будет удалена.\n\n"
+            "Конфиги и настройки останутся на месте."
+        )
+        self.quit_app()
+
+    def _can_uninstall_from(self, install_dir: Path) -> bool:
+        if not install_dir.exists() or not install_dir.is_dir():
+            return False
+
+        exe_path = install_dir / Path(sys.executable).name
+        markers = [
+            install_dir / "assets",
+            install_dir / "ahk",
+            install_dir / "app",
+            install_dir / "AutoHotkeyUX.exe",
+        ]
+        return exe_path.exists() and any(marker.exists() for marker in markers)
+
+    def _schedule_install_dir_removal(self, install_dir: Path) -> None:
+        bat_path = Path(tempfile.gettempdir()) / "workerhotkeys_uninstall.bat"
+        bat_body = (
+            "@echo off\n"
+            "setlocal\n"
+            f"set \"TARGET={install_dir}\"\n"
+            ":retry\n"
+            "timeout /t 2 /nobreak >nul\n"
+            "rmdir /s /q \"%TARGET%\" >nul 2>nul\n"
+            "if exist \"%TARGET%\" goto retry\n"
+            f"del /f /q \"{bat_path}\" >nul 2>nul\n"
+        )
+        bat_path.write_text(bat_body, encoding="utf-8")
+
+        subprocess.Popen(
+            ["cmd.exe", "/c", str(bat_path)],
+            cwd=str(Path.home()),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
 
     # =========================================================
     # Settings: Export / Import config
@@ -2161,7 +2304,13 @@ class MainWindow(QMainWindow):
             return
 
         out_dir = generated_templates_dir()
-        write_variants(src, out_dir, dir_num, hk1_homelinks_enabled=self.chk_homelinks.isChecked())
+        write_variants(
+            src,
+            out_dir,
+            dir_num,
+            hk1_homelinks_enabled=self.chk_homelinks.isChecked(),
+            prepend_php_tag=self.chk_php_tag.isChecked(),
+        )
         self._write_runtime_pick_state()
 
         # HTML uses only HK1..HK2; DB uses HK1..HK4
@@ -2214,7 +2363,13 @@ class MainWindow(QMainWindow):
                 if p.exists():
                     p.unlink()
 
-            write_variants(src, out_dir, dir_num, hk1_homelinks_enabled=self.chk_homelinks.isChecked())
+            write_variants(
+                src,
+                out_dir,
+                dir_num,
+                hk1_homelinks_enabled=self.chk_homelinks.isChecked(),
+                prepend_php_tag=self.chk_php_tag.isChecked(),
+            )
             self._write_runtime_pick_state()
 
             # визуальный фидбек

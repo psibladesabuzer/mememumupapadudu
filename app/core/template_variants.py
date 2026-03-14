@@ -141,12 +141,20 @@ def _ensure_blank_line_after_homelinks(text: str) -> str:
     return "".join(lines)
 
 
+def _prepend_php_open_tag(text: str) -> str:
+    normalized = text.lstrip("\ufeff")
+    if normalized.startswith("<?php"):
+        return normalized
+    return "<?php\n" + normalized
+
+
 def build_variants(
     source_text: str,
     dir_num: str,
     *,
     mode: str = "db",
     hk1_homelinks_enabled: bool = False,
+    prepend_php_tag: bool = False,
 ) -> dict[int, str]:
     """
     mode: "db" | "html"
@@ -163,6 +171,9 @@ def build_variants(
         _apply_html_dirnum_all([v1], dir_num)
         t1 = _set_homelinks_line("".join(v1), enabled=False)
         t2 = _set_force_delete(t1, "1")
+        if prepend_php_tag:
+            t1 = _prepend_php_open_tag(t1)
+            t2 = _prepend_php_open_tag(t2)
         return {1: t1, 2: t2}
     else:
         _apply_db_dirnum_all([v1, v2, v3, v4], dir_num)
@@ -184,6 +195,12 @@ def build_variants(
     hk3 = _set_homelinks_line("".join(v3), enabled=False)
     hk4 = _set_homelinks_line("".join(v4), enabled=False)
 
+    if prepend_php_tag:
+        hk1 = _prepend_php_open_tag(hk1)
+        hk2 = _prepend_php_open_tag(hk2)
+        hk3 = _prepend_php_open_tag(hk3)
+        hk4 = _prepend_php_open_tag(hk4)
+
     return {
         1: hk1,
         2: hk2,
@@ -198,6 +215,7 @@ def write_variants(
     dir_num: str,
     *,
     hk1_homelinks_enabled: bool = False,
+    prepend_php_tag: bool = False,
 ) -> dict[int, Path]:
     source_text = source_php_path.read_text(encoding="utf-8")
 
@@ -208,6 +226,7 @@ def write_variants(
         dir_num,
         mode=mode,
         hk1_homelinks_enabled=hk1_homelinks_enabled,
+        prepend_php_tag=prepend_php_tag,
     )
 
     target_dir.mkdir(parents=True, exist_ok=True)

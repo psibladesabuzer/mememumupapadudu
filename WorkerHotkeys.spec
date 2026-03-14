@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['C:\\Users\\kissh\\PycharmProjects\\mememumupapadudu\\app\\main.py'],
+    ['C:\\Users\\qinqva\\PycharmProjects\\mememumupapadudu\\app\\main.py'],
     pathex=[],
     binaries=[],
-    datas=[('C:\\Users\\kissh\\PycharmProjects\\mememumupapadudu\\assets', 'assets'), ('C:\\Users\\kissh\\PycharmProjects\\mememumupapadudu\\ahk', 'ahk'), ('C:\\Users\\kissh\\PycharmProjects\\mememumupapadudu\\assets', 'assets'), ('C:\\Users\\kissh\\PycharmProjects\\mememumupapadudu\\ahk', 'ahk'), ('C:\\Users\\kissh\\PycharmProjects\\mememumupapadudu\\app\\ui\\style.qss', 'app/ui'), ('C:\\Users\\kissh\\PycharmProjects\\mememumupapadudu\\app\\ui\\style_light.qss', 'app/ui')],
+    datas=[('C:\\Users\\qinqva\\PycharmProjects\\mememumupapadudu\\assets', 'assets'), ('C:\\Users\\qinqva\\PycharmProjects\\mememumupapadudu\\ahk', 'ahk'), ('C:\\Users\\qinqva\\PycharmProjects\\mememumupapadudu\\assets', 'assets'), ('C:\\Users\\qinqva\\PycharmProjects\\mememumupapadudu\\ahk', 'ahk'), ('C:\\Users\\qinqva\\PycharmProjects\\mememumupapadudu\\app\\ui\\style.qss', 'app/ui'), ('C:\\Users\\qinqva\\PycharmProjects\\mememumupapadudu\\app\\ui\\style_light.qss', 'app/ui')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

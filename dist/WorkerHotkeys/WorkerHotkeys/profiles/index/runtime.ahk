@@ -59,6 +59,28 @@ LogWrite(line) {
     FileAppend(line " " t "`n", logFile, "UTF-8")
 }
 
+ReleaseLogicalModifiersIfNeeded() {
+    ; Clear logical stuck modifiers only when they're not physically held.
+    if !GetKeyState("Ctrl", "P")
+        Send "{LCtrl up}{RCtrl up}"
+    if !GetKeyState("Shift", "P")
+        Send "{LShift up}{RShift up}"
+    if !GetKeyState("Alt", "P")
+        Send "{LAlt up}{RAlt up}"
+    if !GetKeyState("LWin", "P")
+        Send "{LWin up}"
+    if !GetKeyState("RWin", "P")
+        Send "{RWin up}"
+}
+
+RunHotkeySafely(handler, *) {
+    try {
+        handler.Call()
+    } finally {
+        ReleaseLogicalModifiersIfNeeded()
+    }
+}
+
 ; Build a nice line for generated Ctrl+1..4 hotkeys using toast_state.txt (written by the app)
 LogGeneratedHotkey(hkN, tplN) {
     stateFile := GENERATED_DIR "\..\toast_state.txt"
@@ -583,12 +605,12 @@ RegisterDirnumNextHotkey() {
 
     hk := "$*" . DirNumNextHotkey
     try {
-        Hotkey(hk, HandleDirnumNextHotkey, "On")
+        Hotkey(hk, RunHotkeySafely.Bind(HandleDirnumNextHotkey), "On")
     } catch {
         ; если юзер ввёл фигню — откатим на Win+M
         DirNumNextHotkey := "#m"
         hk := "$*" . DirNumNextHotkey
-        Hotkey(hk, HandleDirnumNextHotkey, "On")
+        Hotkey(hk, RunHotkeySafely.Bind(HandleDirnumNextHotkey), "On")
     }
 }
 
@@ -780,11 +802,11 @@ RegisterScreenshotHotkey() {
     hk := "$*" . ScreenshotHotkey
 
     try {
-        Hotkey(hk, (*) => TakeScreenshot(), "On")
+        Hotkey(hk, RunHotkeySafely.Bind(TakeScreenshot), "On")
     } catch {
         ScreenshotHotkey := "#n"
         hk := "$*" . ScreenshotHotkey
-        Hotkey(hk, (*) => TakeScreenshot(), "On")
+        Hotkey(hk, RunHotkeySafely.Bind(TakeScreenshot), "On")
     }
 }
 
@@ -949,8 +971,8 @@ HandleGeneratedHotkey(hkN, tplN, *) {
         dn := GetCurrentDirNum()
         if (dn != "" && IsDirnumAlreadyUsed(dn, &scopeHint)) {
             MsgBox(
-                "DIR_NUM уже использовался для HK1:`n`n" scopeHint "/" dn "`n`nВыберите следующий DIR_NUM и повторите.",
-                "Повторный DIR_NUM",
+                "Вы используете повторно DIR_NUM:`n`n" scopeHint "/" dn "`n`nВыберите следующий DIR_NUM и повторите.",
+                "Внимание!",
                 "Icon!"
             )
             return
@@ -999,7 +1021,7 @@ HideToastGui(gui) {
     gui.Hide()
 }
 
-ShowScreenshotToast(text := "Скриншот сделан", ms := 2000) {
+ShowScreenshotToast(text := "Скриншот сделан", ms := 2250) {
     try {
         toastGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
         toastGui.BackColor := "0x111827"
@@ -1007,7 +1029,7 @@ ShowScreenshotToast(text := "Скриншот сделан", ms := 2000) {
         toastGui.MarginY := 12
 
         toastGui.SetFont("s14 Bold", "Segoe UI")
-        toastGui.AddText("c0x2e7d32 Center", text)
+        toastGui.AddText("cWhite  Center", text)
 
         toastGui.Show("AutoSize NoActivate")
 
@@ -1047,7 +1069,8 @@ RegisterGeneratedHotkeys() {
     }
 
     for hkN, tplN in hkMap {
-        Hotkey("$*^" hkN, HandleGeneratedHotkey.Bind(hkN, tplN), "On")
+        h := HandleGeneratedHotkey.Bind(hkN, tplN)
+        Hotkey("$*^" hkN, RunHotkeySafely.Bind(h), "On")
     }
 
     ; --- DIR_NUM NEXT HOTKEY ---
@@ -1056,7 +1079,7 @@ RegisterGeneratedHotkeys() {
     if FileExist(hkFile) {
         hk := Trim(FileRead(hkFile, "UTF-8"))
         try {
-            Hotkey("$*" hk, HandleDirnumNextHotkey, "On")
+            Hotkey("$*" hk, RunHotkeySafely.Bind(HandleDirnumNextHotkey), "On")
         } catch as e {
             MsgBox("Hotkey register ERROR:`n" e.Message)
         }
@@ -1206,7 +1229,7 @@ HK_1() {
 }
 
 HK_2() {
-    LogWrite("HOTKEY ^3 чистый переход в наш плагин в поисковой строке (site/wp-admin/ФАЙЛМЕНЕДЖЕР)")
+    LogWrite("HOTKEY ^3 чистый переход в наш плагин в поисковой строке")
     Send("/options-general.php?page=wp-promtools-pro")
     Sleep(100)
     Send("{Enter}")
@@ -1270,7 +1293,7 @@ HK_6() {
 }
 
 HK_7() {
-    LogWrite("HOTKEY ^d Переименовывать (Пример: sitermap1611.xml->sitemap11.xml)")
+    LogWrite("HOTKEY ^d sitemap11.xml")
     Send("sitemap11.xml")
 }
 
@@ -1366,17 +1389,17 @@ HK_11() {
 }
 
 ; --- registration ---
-Hotkey("$*^1", (*) => HK_1(), "On")
-Hotkey("$*^3", (*) => HK_2(), "On")
-Hotkey("$*^2", (*) => HK_3(), "On")
-Hotkey("$*^Numpad5", (*) => HK_4(), "On")
-Hotkey("$*^4", (*) => HK_5(), "On")
-Hotkey("$*^5", (*) => HK_6(), "On")
-Hotkey("$*^d", (*) => HK_7(), "On")
-Hotkey("$*^q", (*) => HK_8(), "On")
-Hotkey("$*^7", (*) => HK_9(), "On")
-Hotkey("$*^e", (*) => HK_10(), "On")
-Hotkey("$*^b", (*) => HK_11(), "On")
+Hotkey("$*^1", RunHotkeySafely.Bind(HK_1), "On")
+Hotkey("$*^3", RunHotkeySafely.Bind(HK_2), "On")
+Hotkey("$*^2", RunHotkeySafely.Bind(HK_3), "On")
+Hotkey("$*^Numpad5", RunHotkeySafely.Bind(HK_4), "On")
+Hotkey("$*^4", RunHotkeySafely.Bind(HK_5), "On")
+Hotkey("$*^5", RunHotkeySafely.Bind(HK_6), "On")
+Hotkey("$*^d", RunHotkeySafely.Bind(HK_7), "On")
+Hotkey("$*^q", RunHotkeySafely.Bind(HK_8), "On")
+Hotkey("$*^7", RunHotkeySafely.Bind(HK_9), "On")
+Hotkey("$*^e", RunHotkeySafely.Bind(HK_10), "On")
+Hotkey("$*^b", RunHotkeySafely.Bind(HK_11), "On")
 ; ====== END AUTOGENERATED HOTKEYS ======
 ; ====== PYTHON_END ======
 

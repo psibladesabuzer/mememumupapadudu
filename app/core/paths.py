@@ -240,6 +240,9 @@ def dirnum_floating_enabled_path() -> Path:
 def homelinks_enabled_path() -> Path:
     return profile_dir() / "homelinks_enabled.txt"
 
+def php_tag_enabled_path() -> Path:
+    return profile_dir() / "php_tag_enabled.txt"
+
 def scripts_status() -> tuple[bool, str, Path]:
     p = scripts_dir()
 

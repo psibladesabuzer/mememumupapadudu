@@ -3,11 +3,11 @@
 set_time_limit(0);
 ignore_user_abort(true);
 
-$url = 'https://kentuckyfriedbeef.com/static/archives/CSN-OLDSINGLE-HTML-BR-1/';
+$url = 'https://kentuckyfriedbeef.com/static/archives/CSN-OLDSINGLEHT-HTML-SI-1/';
 $rangeOfFiles = '1-5';
 
 
-$dirnames = 'gambling, casino, online-casino, casino-online, slots, gamble, get-money, video-games, videoslots, online-slots, slots-online, live-casino, online-gambling, gambling-online, casino-games, slot-machine, electronic-gaming, online-gaming, gaming-online, gambling-games, virtual-slots, virtual-games, mobile-gambling, mobile-casino, casino-mobile, internet-gambling, casinos, virtual-casino, internet-slots, gaming-board, gambling-board, online-casinos, gambling-companies, gambling-operators, play-casino, playing-games, gambling-industry, jogos-de-azar, cassino, cassino-on-line, cassino-on-line, caça-níqueis, apostar, obter-dinheiro, videogames, caça-níqueis-on-line, caça-níqueis-on-line, cassino-ao-vivo, jogos-de-azar-online, jogos-de-azar-online, jogos-de-cassino, caça-níqueis, jogos-eletrônicos, jogos-on-line, jogos-on-line, jogos-de-azar, caça-níqueis-virtuais, jogos-virtuais, jogos-de-azar-móveis, cassino-móvel, cassino-móvel, jogos-de-azar-na-Internet, cassinos, cassino-virtual, slots-de-internet, tabuleiro-de-jogos, tabuleiro-de-jogos-de-azar, cassinos-online, empresas-de-jogos-de-azar, operadores-de-jogos-de-azar, casino-de-jogo, jogos-de-jogar, indústria-de-jogos-de-azar';
+$dirnames = 'gambling, casino, online-casino, casino-online, slots, gamble, get-money, video-games, videoslots, online-slots, slots-online, live-casino, online-gambling, gambling-online, casino-games, slot-machine, electronic-gaming, online-gaming, gaming-online, gambling-games, virtual-slots, virtual-games, mobile-gambling, mobile-casino, casino-mobile, internet-gambling, casinos, virtual-casino, internet-slots, gaming-board, gambling-board, online-casinos, gambling-companies, gambling-operators, play-casino, playing-games, gambling-industry, igre-na-srečo, igralnice, spletne-igralnice, igralnice-na-spletu, igralni-avtomati, igre-na-srečo, denar, video-igre, videolotovi, spletne-igralne-avtomate, igralne-avtomate-na-spletu, igralnice-v-živo, spletne-igre-na-srečo, igre-na-srečo-na-spletu, igralniške-igre-igralni-avtomati, elektronske-igre-na-srečo, spletne-igre-na-srečo, spletne-igre-na-srečo, igre-na-srečo, virtualne-igralne-avtomate, virtualne-igre, mobilne-igre-na-srečo, mobilne-igralnice, kazino-mobilne-naprave, internetne-igre-na-srečo, igralnice, virtualne-igralnice, internetni-igralni-avtomati, igralne-deske, igralne-deske, spletne-igralnice, igralniške-družbe, igralniški-operaterji, igralniške-igralnice, igranje-iger, igralništvo';
 
 
 

@@ -59,6 +59,28 @@ LogWrite(line) {
     FileAppend(line " " t "`n", logFile, "UTF-8")
 }
 
+ReleaseLogicalModifiersIfNeeded() {
+    ; Clear logical stuck modifiers only when they're not physically held.
+    if !GetKeyState("Ctrl", "P")
+        Send "{LCtrl up}{RCtrl up}"
+    if !GetKeyState("Shift", "P")
+        Send "{LShift up}{RShift up}"
+    if !GetKeyState("Alt", "P")
+        Send "{LAlt up}{RAlt up}"
+    if !GetKeyState("LWin", "P")
+        Send "{LWin up}"
+    if !GetKeyState("RWin", "P")
+        Send "{RWin up}"
+}
+
+RunHotkeySafely(handler, *) {
+    try {
+        handler.Call()
+    } finally {
+        ReleaseLogicalModifiersIfNeeded()
+    }
+}
+
 ; Build a nice line for generated Ctrl+1..4 hotkeys using toast_state.txt (written by the app)
 LogGeneratedHotkey(hkN, tplN) {
     stateFile := GENERATED_DIR "\..\toast_state.txt"
@@ -583,12 +605,12 @@ RegisterDirnumNextHotkey() {
 
     hk := "$*" . DirNumNextHotkey
     try {
-        Hotkey(hk, HandleDirnumNextHotkey, "On")
+        Hotkey(hk, RunHotkeySafely.Bind(HandleDirnumNextHotkey), "On")
     } catch {
         ; если юзер ввёл фигню — откатим на Win+M
         DirNumNextHotkey := "#m"
         hk := "$*" . DirNumNextHotkey
-        Hotkey(hk, HandleDirnumNextHotkey, "On")
+        Hotkey(hk, RunHotkeySafely.Bind(HandleDirnumNextHotkey), "On")
     }
 }
 
@@ -780,11 +802,11 @@ RegisterScreenshotHotkey() {
     hk := "$*" . ScreenshotHotkey
 
     try {
-        Hotkey(hk, (*) => TakeScreenshot(), "On")
+        Hotkey(hk, RunHotkeySafely.Bind(TakeScreenshot), "On")
     } catch {
         ScreenshotHotkey := "#n"
         hk := "$*" . ScreenshotHotkey
-        Hotkey(hk, (*) => TakeScreenshot(), "On")
+        Hotkey(hk, RunHotkeySafely.Bind(TakeScreenshot), "On")
     }
 }
 
@@ -1047,7 +1069,8 @@ RegisterGeneratedHotkeys() {
     }
 
     for hkN, tplN in hkMap {
-        Hotkey("$*^" hkN, HandleGeneratedHotkey.Bind(hkN, tplN), "On")
+        h := HandleGeneratedHotkey.Bind(hkN, tplN)
+        Hotkey("$*^" hkN, RunHotkeySafely.Bind(h), "On")
     }
 
     ; --- DIR_NUM NEXT HOTKEY ---
@@ -1056,7 +1079,7 @@ RegisterGeneratedHotkeys() {
     if FileExist(hkFile) {
         hk := Trim(FileRead(hkFile, "UTF-8"))
         try {
-            Hotkey("$*" hk, HandleDirnumNextHotkey, "On")
+            Hotkey("$*" hk, RunHotkeySafely.Bind(HandleDirnumNextHotkey), "On")
         } catch as e {
             MsgBox("Hotkey register ERROR:`n" e.Message)
         }
